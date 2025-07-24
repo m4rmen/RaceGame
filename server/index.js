@@ -27,14 +27,21 @@ function getGameById(id) {
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
   
-   socket.on("disconnect", (reason) =>
-    console.log("💔 Client disconnected:", socket.id, reason)
-  );
+  socket.on("deleteRoom", (roomId) => {
+  const idx = games.findIndex(g => g.gameId === roomId && g.organizerId === socket.id);
+  if (idx !== -1) {
+    games.splice(idx, 1);
+    console.log(`Game ${roomId} deleted by host.`);
+    io.to(roomId).emit("roomDeleted");
+  }
+});
+   
   socket.on("createRoom", (data) => {
     const currentGame = new Game(data);
     currentGame.organizerId = socket.id;
     games.push(currentGame);
     socket.join(currentGame.gameId)
+    console.log("Game created with ID:", currentGame.gameId);
   });
 
 

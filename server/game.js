@@ -23,6 +23,9 @@ class Game {
         ['','','','','back_of_card'],
         ['','','','','back_of_card'],
         ['','','','','back_of_card'],
+        ['','','','','back_of_card'],
+        ['','','','','back_of_card'],
+        ['','','','','back_of_card'],
         ['clubs_ace','diamonds_ace','hearts_ace','spades_ace','back_of_card']
     ]
     initDone = false;
@@ -44,7 +47,7 @@ class Game {
             })
         })
         this.crampCards = []
-        for(let i = 0; i < 4; i++){
+        for(let i = 0; i < 7; i++){
             this.crampCards.push(this.flipCard());
         }
         this.initDone = true;
