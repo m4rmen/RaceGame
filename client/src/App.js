@@ -3,6 +3,7 @@ import Home from "./components/Home";
 import Host from "./components/Host";
 import Join from "./components/Join";
 import WaitingRoom from "./components/WaitingRoom";
+import Game from "./components/Game";
 
 
 import { SocketProvider } from "./SocketContext";
@@ -16,6 +17,7 @@ const App = () => (
                 <Route exact path="/host" element={<Host />} />
                 <Route exact path="/join" element={<Join />} />
                 <Route exact path="/waitingroom/:roomId" element={<WaitingRoom />} />
+                <Route exact path="/game/:roomId" element={<Game />} />
             </Routes>
         </Router>
     </SocketProvider>

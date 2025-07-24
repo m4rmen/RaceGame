@@ -28,21 +28,30 @@ io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
   
   socket.on("deleteRoom", (roomId) => {
-  const idx = games.findIndex(g => g.gameId === roomId && g.organizerId === socket.id);
-  if (idx !== -1) {
-    games.splice(idx, 1);
-    console.log(`Game ${roomId} deleted by host.`);
-    io.to(roomId).emit("roomDeleted");
-  }
-});
+    const idx = games.findIndex(g => g.gameId === roomId && g.organizerId === socket.id);
+    if (idx !== -1) {
+      games.splice(idx, 1);
+      console.log(`Game ${roomId} deleted by host.`);
+      io.to(roomId).emit("roomDeleted");
+    }
+  });
    
   socket.on("createRoom", (data) => {
-    const currentGame = new Game(data);
-    currentGame.organizerId = socket.id;
+    const currentGame = new Game(data, socket.id);
     games.push(currentGame);
     socket.join(currentGame.gameId)
     console.log("Game created with ID:", currentGame.gameId);
   });
+
+  socket.on("isOrganizer", (roomId, callback) => {
+    const currentGame = getGameById(roomId);
+    if (currentGame && currentGame.organizerId === socket.id) {
+      callback(true);
+    } else {
+      callback(false);
+    }
+  })
+
 
 
   socket.on("joinRoom", (username, roomId) => {
@@ -53,9 +62,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("quitGame", (roomId) => {
+    console.log("Player quitting game: ", roomId);
     const currentGame = getGameById(roomId);
     currentGame.removePlayer(socket.id);
-    socket.to(currentGame.organizerId).emit("updatePlayers", currentGame.players); 
+    socket.to(roomId).emit("updatePlayers", currentGame.players); 
   })
 
   socket.on("getPlayers", (roomId,callback)=>{
@@ -132,9 +142,16 @@ io.on("connection", (socket) => {
     games.map((game) => {
       if (game.organizerId === socket.id) {
         games.splice(games.indexOf(game), 1);
+        socket.to(game.gameId).emit("roomDeleted");
+      }
+      else {
+        game.removePlayer(socket.id);
+        socket.to(game.gameId).emit("updatePlayers", game.players);
+        console.log("Player disconnected: ", socket.id);
       }
     });  
   });
+
 });
 
 const PORT = process.env.PORT || 5000;

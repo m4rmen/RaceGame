@@ -1,9 +1,11 @@
 import React, {useEffect} from "react";
 import { useParams } from 'react-router-dom';
 import { useSocket } from "../SocketContext";
+import { useNavigate } from 'react-router-dom';
+
 
 const WaitingRoom = () => {
-
+    const navigate = useNavigate();
     const { roomId } = useParams();
     const socket = useSocket();
     const [players, setPlayers] = React.useState([]);
@@ -12,7 +14,20 @@ const WaitingRoom = () => {
         socket.emit("getPlayers", roomId, (playersInRoom) => {
             setPlayers(playersInRoom.map(player =>  player.username));
         });
-    }, [socket, roomId]);
+
+        socket.on("updatePlayers", (updatedPlayers) => {
+            setPlayers(updatedPlayers.map(player => player.username));
+        });
+
+        socket.on("roomDeleted", () => {
+            navigate(`/join`);
+        });
+
+        socket.on("bettingPhase", () => {
+            navigate(`/game/${roomId}`);
+        });
+
+    }, [socket, roomId, navigate]);
 
 
 

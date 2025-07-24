@@ -33,8 +33,9 @@ class Game {
     winner = null;
     sockets = {};
     positions = {clubs_ace: positions.Fourth, diamonds_ace: positions.Fourth, hearts_ace: positions.Fourth, spades_ace: positions.Fourth}
-    constructor(gameId){
+    constructor(gameId, organizerId){
         this.gameId = gameId;
+        this.organizerId = organizerId;
         this.players = [];
         this.initDeck();
     }
@@ -114,7 +115,7 @@ class Game {
     }
 
     checkIfHorseBelow(rowIndex, grid){
-        for (let i = rowIndex; i <= 4; i++){
+        for (let i = rowIndex; i <= 7; i++){
             for (let j=0; j <= 3; j++){
                 if(grid[i][j] !== ''){
                     return true;
