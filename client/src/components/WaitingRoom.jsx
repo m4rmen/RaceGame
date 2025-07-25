@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import { useParams } from 'react-router-dom';
 import { useSocket } from "../SocketContext";
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +8,7 @@ const WaitingRoom = () => {
     const navigate = useNavigate();
     const { roomId } = useParams();
     const socket = useSocket();
-    const [players, setPlayers] = React.useState([]);
+    const [players, setPlayers] = useState([]);
 
     useEffect(() => {
         socket.emit("getPlayers", roomId, (playersInRoom) => {

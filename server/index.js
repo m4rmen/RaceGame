@@ -53,12 +53,21 @@ io.on("connection", (socket) => {
   })
 
 
-
-  socket.on("joinRoom", (username, roomId) => {
+  socket.on("joinRoom", (username, roomId, callback) => {
     const currentGame = getGameById(roomId);
-    currentGame.addPlayer(username, socket.id);
-    socket.join(roomId);
-    socket.to(roomId).emit("updatePlayers", currentGame.players); 
+    if (!currentGame.isStarted) {
+      currentGame.addPlayer(username, socket.id);
+      socket.join(roomId);
+      socket.to(roomId).emit("updatePlayers", currentGame.players);
+      callback({
+        success: true
+      }); 
+    }else{
+      callback({
+        success: false,
+        message: "Game has already started. You cannot join now."
+      });
+    }
   });
 
   socket.on("quitGame", (roomId) => {
@@ -70,11 +79,21 @@ io.on("connection", (socket) => {
 
   socket.on("getPlayers", (roomId,callback)=>{
     const currentGame = getGameById(roomId);
-    callback(currentGame.players);
+    callback(currentGame?.players);
   })
 
   socket.on("startBettingPhase", (roomId)=>{
     socket.to(roomId).emit("bettingPhase");
+    const currentGame = getGameById(roomId);
+    currentGame.toggleStart();
+  })
+
+
+  socket.on("playerBetChange", (bet, roomId)=>{
+    const currentGame = getGameById(roomId);
+    const currentPlayer = currentGame.players.find((player)=>player.socketId === socket.id);
+    currentPlayer.bet = bet;
+    socket.to(roomId).emit("updatePlayers", currentGame.players);
   })
 
   socket.on("betsPlaced", (bet, roomId)=>{

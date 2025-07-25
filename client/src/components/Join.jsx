@@ -17,9 +17,16 @@ const Join = () => {
     };
 
     const handleJoinRoom = () => {
-        socket.emit("joinRoom", userName, roomCode)
-        sessionStorage.setItem("currentRoomId", roomCode);
-        navigate(`/waitingroom/${roomCode}`);
+        socket.emit("joinRoom", userName, roomCode, (response) => {
+            console.log("Response from server: ", response);
+            if (response.success === false) {
+                alert(response.message);
+            } else {
+                sessionStorage.setItem("currentRoomId", roomCode);
+                navigate(`/waitingroom/${roomCode}`);
+            }
+        });
+        
     };
 
     return (

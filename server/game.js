@@ -1,12 +1,22 @@
 class Player {
-    bet = {};
+    bet = {
+        clubs: 0,
+        spades: 0,  
+        hearts: 0,
+        diamonds: 0
+    };
     constructor(username, socketId) {
       this.username = username;
       this.socketId = socketId;
     }
 
     resetBet(){
-        this.bet = {};
+        this.bet = {
+            clubs: 0,
+            spades: 0,  
+            hearts: 0,
+            diamonds: 0
+        };
     }
 }
 
@@ -29,6 +39,7 @@ class Game {
         ['clubs_ace','diamonds_ace','hearts_ace','spades_ace','back_of_card']
     ]
     initDone = false;
+    isStarted = false;
     gameWon = false;
     winner = null;
     sockets = {};
@@ -54,6 +65,9 @@ class Game {
         this.initDone = true;
     }
 
+    toggleStart(){
+        this.isStarted = !this.isStarted;
+    }
 
     findPositionOfAce(card){
         let currentRow = null;
