@@ -5,6 +5,7 @@ class Player {
         hearts: 0,
         diamonds: 0
     };
+    betConfirmed = false;
     constructor(username, socketId) {
       this.username = username;
       this.socketId = socketId;

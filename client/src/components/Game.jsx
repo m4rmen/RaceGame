@@ -46,6 +46,9 @@ const Game = () => {
 
     }
 
+    const handleConfirmBets = () => {
+        socket.emit("playerBetConfirmed", roomId);
+    }
 
     return (
         <div>
@@ -54,12 +57,12 @@ const Game = () => {
             {isOrganizer && <p>You are the organizer of this game.</p>}
             {!isOrganizer && <p>Player: {players.find(player => player.socketId === socket.id)?.username}</p>}
             
-            {players.length > 1 ? <h2>Players in Room:</h2> && (
+            {players.length > 0 ? <h2>Players in Room:</h2> && (
                 <ul>
                     {players.map((player, index) => (
                         player.socketId !== socket.id && 
                         <div key={index}>
-                            <li>{player.username}</li>
+                            <li style={{ color: player.betConfirmed ? "green" : "red" }}>{player.username}</li>
                             {Object.keys(player.bet).map((suit) => (
                                 player.bet[suit] > 0 && <div key={suit}>
                                     <span>{suit}: {player.bet[suit]}</span>
@@ -73,6 +76,7 @@ const Game = () => {
             )}
             
             {(!isOrganizer && bettingPhase && currentPlayer) &&
+                <div className="betting-container">
                 <div className="betting-card-container">
                     <div className="betting-card">
                         <img src="/Images/clubs_ace.png" alt="" />
@@ -107,6 +111,8 @@ const Game = () => {
                             <button onClick={() => handleBet("+", "diamonds")}>+</button>
                         </div>
                     </div>
+                </div>
+                <button onClick={handleConfirmBets}>Confirm Bets</button>
                 </div>
             }
 

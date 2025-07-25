@@ -2,15 +2,28 @@ import React, {useEffect} from "react";
 import { useSocket } from "../SocketContext";
 import './Home.css';
 import { useNavigate } from 'react-router-dom';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
 import Typography from '@mui/material/Typography';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Modal from '@mui/material/Modal';
+import Box from '@mui/material/Box';
+
+
+const style = {
+    width: { xs: "90vw", sm: 400 },
+    maxHeight: "90vh",
+    bgcolor: "background.paper",
+    borderRadius: 4,
+    boxShadow: 24,
+    p: { xs: 2, sm: 4 },
+    overflowY: "auto",
+};
+
 
 
 const Home = () => {
     const socket = useSocket();
+    const [open, setOpen] = React.useState(false);
+    const handleOpen = () => setOpen(true);
+    const handleClose = () => setOpen(false);
 
     const navigate = useNavigate();
 
@@ -38,19 +51,24 @@ const Home = () => {
                 <div className="button-container">
                     <button onClick={handleJoinGame}> Join Game </button>
                     <button onClick={handleHostGame}> Host </button>
-                </div>    
-                <Accordion
-                sx={{ width: '90%', borderRadius: '4px', marginTop: '20px', marginBottom: '20px', backgroundColor: '#f9f9f9' }}
+                </div>
+
+                <button onClick={handleOpen} className="rules-button">Game rules</button>
+                <Modal 
+                    open={open} 
+                    onClose={handleClose}
+                    sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        p: 2,              
+                    }}
                 >
-                    <AccordionSummary
-                    expandIcon={<ExpandMoreIcon />}
-                    aria-controls="panel1-content"
-                    id="panel1-header"
-                    >
-                        <Typography component="span" >Rules of the game</Typography>
-                    </AccordionSummary>
-                    <AccordionDetails >
-                        <h3>Placing Bets</h3>
+                    <Box sx={style}>
+                        <Typography variant="h6" component="h2">
+                            Rules of the game
+                        </Typography>
+                            <h3>Placing Bets</h3>
                         <Typography component="span">
                             1. Each player chooses a horse (ace suit card) to bet on.
                         </Typography>
@@ -77,16 +95,14 @@ const Home = () => {
                         <Typography component="span">
                             3. The first horse to reach the finish line wins the race.
                         </Typography>
-
                         <br />
                         <h3>Winning and Drinking</h3>   
                         <Typography component="span">
                             The players whose horse wins the race distribute sips equal to their bet among the other players.
                         </Typography>
                         <br />
-
-                    </AccordionDetails>
-                </Accordion>
+                    </Box>
+                </Modal>
             </div>
 
         </div>

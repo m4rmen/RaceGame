@@ -55,7 +55,7 @@ io.on("connection", (socket) => {
 
   socket.on("joinRoom", (username, roomId, callback) => {
     const currentGame = getGameById(roomId);
-    if (!currentGame.isStarted) {
+    if (!currentGame?.isStarted) {
       currentGame.addPlayer(username, socket.id);
       socket.join(roomId);
       socket.to(roomId).emit("updatePlayers", currentGame.players);
@@ -88,6 +88,12 @@ io.on("connection", (socket) => {
     currentGame.toggleStart();
   })
 
+  socket.on("playerBetConfirmed", (roomId)=>{
+    const currentGame = getGameById(roomId);
+    const currentPlayer = currentGame.players.find((player)=>player.socketId === socket.id);
+    currentPlayer.betConfirmed = true;
+    socket.to(roomId).emit("updatePlayers", currentGame.players); 
+  })
 
   socket.on("playerBetChange", (bet, roomId)=>{
     const currentGame = getGameById(roomId);
