@@ -88,13 +88,6 @@ io.on("connection", (socket) => {
     currentGame.toggleStart();
   })
 
-  socket.on("playerBetConfirmed", (roomId)=>{
-    const currentGame = getGameById(roomId);
-    const currentPlayer = currentGame.players.find((player)=>player.socketId === socket.id);
-    currentPlayer.betConfirmed = true;
-    socket.to(roomId).emit("updatePlayers", currentGame.players); 
-  })
-
   socket.on("playerBetChange", (bet, roomId)=>{
     const currentGame = getGameById(roomId);
     const currentPlayer = currentGame.players.find((player)=>player.socketId === socket.id);
@@ -102,10 +95,10 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("updatePlayers", currentGame.players);
   })
 
-  socket.on("betsPlaced", (bet, roomId)=>{
+  socket.on("betsPlaced", (roomId)=>{
     const currentGame = getGameById(roomId);
     const currentPlayer = currentGame.players.find((player)=>player.socketId === socket.id);
-    currentPlayer.bet = bet;
+    currentPlayer.betConfirmed = true;
 
     socket.to(currentGame.organizerId).emit("updatePlayers", currentGame.players); 
 

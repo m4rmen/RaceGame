@@ -1,0 +1,30 @@
+.game-host-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+}
+
+.card {
+  aspect-ratio: 1 / 1;         /* 1:1 width:height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.card img {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.card-container {
+  width: 90vw;       /* fill 90% of viewport width */
+  max-width: 480px;  /* adjust as you like */
+  margin: 20px auto;
+}
+.card-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+

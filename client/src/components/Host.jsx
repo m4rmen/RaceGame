@@ -1,6 +1,8 @@
 import React, {useState,useEffect} from "react";
 import { useSocket } from "../SocketContext";
 import { useNavigate } from 'react-router-dom';
+import "./Host.css";
+
 
 const Host = () => {
     const socket = useSocket();
@@ -16,7 +18,7 @@ const Host = () => {
 
     const handleStartGame = () => {
         socket.emit("startBettingPhase", code);
-        navigate(`/game/${code}`);
+        navigate(`/gamehost/${code}`);
     };
 
     useEffect(() => {
@@ -36,20 +38,20 @@ const Host = () => {
     }, [socket]);
 
     return (
-        <div>
-        <h1>Host</h1>
-        <p>Your game code is: {code}</p>
-        <h2>Players in Room:</h2>
-        {players.length > 0 ? (
-            <ul>
-                {players.map((player, index) => (
-                    <li key={index}>{player}</li>
-                ))}
-            </ul>
-        ) : (
-            <p>No players in the room</p>
-        )}
-        <button onClick={handleStartGame}>Start Game</button>
+        <div className="host-container">
+            <h1>Host</h1>
+            <p>Your game code is: {code}</p>
+            <h2>Players in Room:</h2>
+            {players.length > 0 ? (
+                <ul>
+                    {players.map((player, index) => (
+                        <li key={index}>{player}</li>
+                    ))}
+                </ul>
+            ) : (
+                <p>No players in the room</p>
+            )}
+            <button onClick={handleStartGame}>Start Game</button>
         </div>
     );
 }

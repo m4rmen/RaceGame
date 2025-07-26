@@ -1,6 +1,7 @@
 import React, {useState} from "react";
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from "../SocketContext";
+import "./Join.css";
 
 const Join = () => {
     const navigate = useNavigate();
@@ -30,8 +31,8 @@ const Join = () => {
     };
 
     return (
-        <div>
-        <h1>Join</h1>
+        <div className="join-container">
+            <h1>Join</h1>
             <label htmlFor="roomCode">Room Code:</label>
             <input type="number" id="roomCode" onChange={handleInputChange} />
             <br />

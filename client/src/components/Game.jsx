@@ -7,16 +7,12 @@ import "./Game.css";
 const Game = () => {
     const { roomId } = useParams();
     const socket = useSocket();
-    const [isOrganizer, setIsOrganizer] = useState(false);
     const [bettingPhase, setBettingPhase] = useState(true);
     const [players, setPlayers] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(null);
+    const [betConfirmed, setBetConfirmed] = useState(false);
 
     useEffect(() => {
-        socket.emit("isOrganizer", roomId, (isOrganizer) => {
-            setIsOrganizer(isOrganizer);
-        });
-
         socket.emit("getPlayers", roomId, (playersInRoom) => {
             setPlayers(playersInRoom);
             setCurrentPlayer(playersInRoom.find(player => player.socketId === socket.id));
@@ -47,35 +43,37 @@ const Game = () => {
     }
 
     const handleConfirmBets = () => {
-        socket.emit("playerBetConfirmed", roomId);
+        socket.emit("betsPlaced", roomId);
+        setBetConfirmed(true);
     }
 
     return (
-        <div>
+        <div className="game-container">
             <h1>Game</h1>
-            <p>Room ID: {roomId}</p>
-            {isOrganizer && <p>You are the organizer of this game.</p>}
-            {!isOrganizer && <p>Player: {players.find(player => player.socketId === socket.id)?.username}</p>}
-            
-            {players.length > 0 ? <h2>Players in Room:</h2> && (
-                <ul>
-                    {players.map((player, index) => (
-                        player.socketId !== socket.id && 
-                        <div key={index}>
-                            <li style={{ color: player.betConfirmed ? "green" : "red" }}>{player.username}</li>
-                            {Object.keys(player.bet).map((suit) => (
-                                player.bet[suit] > 0 && <div key={suit}>
-                                    <span>{suit}: {player.bet[suit]}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                </ul>
+            <p>Player: {players.find(player => player.socketId === socket.id)?.username}</p>
+
+            {(players.length > 0) ? (
+                <div>
+                    <h2>Players in Room:</h2>
+                    <ul>
+                        {players.map((player, index) => (
+                            player.socketId !== socket.id && 
+                            <div key={index}>
+                                <li style={{ color: player.betConfirmed ? "green" : "red" }}>{player.username}</li>
+                                {Object.keys(player.bet).map((suit) => (
+                                    player.bet[suit] > 0 && <div key={suit}>
+                                        <span>{suit}: {player.bet[suit]}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </ul>
+                </div>
             ) : (
                 <p>No other players in the room</p>
             )}
-            
-            {(!isOrganizer && bettingPhase && currentPlayer) &&
+
+            {(bettingPhase && currentPlayer && !betConfirmed) &&
                 <div className="betting-container">
                 <div className="betting-card-container">
                     <div className="betting-card">
