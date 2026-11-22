@@ -6,6 +6,8 @@ class Player {
         diamonds: 0
     };
     betConfirmed = false;
+    distributions = {};
+    distributionConfirmed = false;
     constructor(username, socketId) {
       this.username = username;
       this.socketId = socketId;
@@ -18,6 +20,9 @@ class Player {
             hearts: 0,
             diamonds: 0
         };
+        this.betConfirmed = false;
+        this.distributions = {};
+        this.distributionConfirmed = false;
     }
 }
 

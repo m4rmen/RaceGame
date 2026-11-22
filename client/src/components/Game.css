@@ -35,3 +35,38 @@
     margin: 10px 0;
     color: rgb(255, 255, 255);
 }
+
+.distribution-panel {
+    width: min(90vw, 520px);
+    padding: 24px;
+    border-radius: 12px;
+    background: #fff8dc;
+    color: #1f2937;
+}
+
+.distribution-panel h2 {
+    text-transform: capitalize;
+}
+
+.distribution-list {
+    display: grid;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.distribution-player {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.distribution-player div {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.distribution-error {
+    color: #b91c1c;
+}

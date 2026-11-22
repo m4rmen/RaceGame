@@ -28,3 +28,34 @@
   gap: 8px;
 }
 
+.host-results {
+  width: min(95vw, 900px);
+  margin: 20px auto;
+}
+
+.host-results h2 {
+  text-transform: capitalize;
+}
+
+.host-results table {
+  width: 100%;
+  margin-bottom: 20px;
+  border-collapse: collapse;
+}
+
+.host-results th,
+.host-results td {
+  padding: 10px;
+  border: 1px solid #d1d5db;
+  text-align: left;
+}
+
+.host-results th {
+  background: #1f2937;
+  color: white;
+}
+
+.host-results tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.08);
+}
+

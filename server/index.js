@@ -24,6 +24,36 @@ function getGameById(id) {
   return games.find((game) => game.gameId === id);
 }
 
+function getWinningSuit(game) {
+  return game.winner?.replace("_ace", "");
+}
+
+function getDrinkAllowance(game, player) {
+  const winningSuit = getWinningSuit(game);
+  return winningSuit ? (player.bet[winningSuit] || 0) * 2 : 0;
+}
+
+function getEndGameState(game) {
+  const players = game.players.map((player) => ({
+    socketId: player.socketId,
+    username: player.username,
+    bet: player.bet,
+    drinkAllowance: getDrinkAllowance(game, player),
+    distributions: Object.entries(player.distributions).map(([recipientId, amount]) => ({
+      recipientId,
+      recipientUsername: game.players.find((candidate) => candidate.socketId === recipientId)?.username || "Unknown player",
+      amount
+    })),
+    distributionConfirmed: player.distributionConfirmed
+  }));
+
+  return {
+    winner: game.winner,
+    players,
+    allDistributed: players.every((player) => player.distributionConfirmed)
+  };
+}
+
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
   
@@ -121,10 +151,10 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("cardFlipped", card);
       io.to(roomId).emit("updateGrid", currentGame.grid);
       if(currentGame.gameWon) {
-        io.to(roomId).emit("gameWon", {
-          winner: currentGame.winner,
-          players: currentGame.players.map(({ username, bet }) => ({ username, bet }))
+        currentGame.players.forEach((player) => {
+          player.distributionConfirmed = getDrinkAllowance(currentGame, player) === 0;
         });
+        io.to(roomId).emit("gameWon", getEndGameState(currentGame));
       }
       io.to(roomId).emit("updatePosition", currentGame.positions)
     }, 100);
@@ -137,22 +167,69 @@ io.on("connection", (socket) => {
     callback(currentPlayer.bet);
   })
 
-  //TODO complete this
-  socket.on("playAgain", (roomId)=>{
-    const oldGame = getGameById(roomId);
-    const players = oldGame.players;
-    console.log("old game players : ", players)
-    games.splice(games.indexOf(oldGame), 1);
-    const newGame = new Game(roomId);
-    games.push(newGame);
-    for(let player of players){
-      console.log("player : ", player)
-      player.resetBet();
+  socket.on("submitDistribution", (roomId, requestedDistributions, callback = () => {}) => {
+    const currentGame = getGameById(roomId);
+    const currentPlayer = currentGame?.players.find((player) => player.socketId === socket.id);
+
+    if (!currentGame?.gameWon || !currentPlayer || currentPlayer.distributionConfirmed) {
+      callback({ success: false, message: "This distribution cannot be submitted." });
+      return;
     }
-    newGame.players = [...players];
-    console.log("New Game players : ", newGame.players)
-    newGame.organizerId = oldGame.organizerId;
-    socket.to(roomId).emit("newGame", newGame.players);
+
+    const validRecipients = new Set(
+      currentGame.players
+        .filter((player) => player.socketId !== socket.id)
+        .map((player) => player.socketId)
+    );
+    const distributions = {};
+
+    for (const [recipientId, rawAmount] of Object.entries(requestedDistributions || {})) {
+      const amount = Number(rawAmount);
+      if (!validRecipients.has(recipientId) || !Number.isInteger(amount) || amount < 0) {
+        callback({ success: false, message: "The distribution contains an invalid amount or player." });
+        return;
+      }
+      if (amount > 0) distributions[recipientId] = amount;
+    }
+
+    const allowance = getDrinkAllowance(currentGame, currentPlayer);
+    const requiredTotal = validRecipients.size > 0 ? allowance : 0;
+    const distributedTotal = Object.values(distributions).reduce((total, amount) => total + amount, 0);
+
+    if (distributedTotal !== requiredTotal) {
+      callback({ success: false, message: `You must distribute exactly ${requiredTotal} drink units.` });
+      return;
+    }
+
+    currentPlayer.distributions = distributions;
+    currentPlayer.distributionConfirmed = true;
+    const endGameState = getEndGameState(currentGame);
+    io.to(roomId).emit("distributionUpdate", endGameState);
+    callback({ success: true });
+  });
+
+  socket.on("playAgain", (roomId, callback = () => {})=>{
+    const oldGame = getGameById(roomId);
+    if (!oldGame || oldGame.organizerId !== socket.id || !getEndGameState(oldGame).allDistributed) {
+      callback({ success: false, message: "Replay is not available yet." });
+      return;
+    }
+
+    const players = oldGame.players;
+    const newGame = new Game(roomId, oldGame.organizerId);
+    for(let player of players){
+      player.resetBet();
+      newGame.players.push(player);
+      newGame.sockets[player.socketId] = player;
+    }
+    newGame.isStarted = true;
+    games[games.indexOf(oldGame)] = newGame;
+    io.to(roomId).emit("newGame", {
+      players: newGame.players,
+      grid: newGame.grid,
+      positions: newGame.positions
+    });
+    callback({ success: true });
   })
 
 

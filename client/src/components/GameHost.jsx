@@ -2,7 +2,6 @@ import React, {useEffect, useState} from "react";
 import { useParams } from 'react-router-dom';
 import { useSocket } from "../SocketContext";
 import "./GameHost.css"; // Assuming you have a CSS file for styling
-import RaceResults from "./RaceResults";
 
 const GameHost = () => {
     const { roomId } = useParams();
@@ -12,6 +11,7 @@ const GameHost = () => {
     const [lastCard, setLastCard] = useState(null);
     const [positions, setPositions] = useState({});
     const [raceResult, setRaceResult] = useState(null);
+    const [replayError, setReplayError] = useState("");
     const [cardGrid, setCardGrid] = useState([
         ['','','','',''],
         ['back_of_card','','','',''],
@@ -44,6 +44,16 @@ const GameHost = () => {
         socket.on("updateGrid", setCardGrid);
         socket.on("updatePosition", setPositions);
         socket.on("gameWon", setRaceResult);
+        socket.on("distributionUpdate", setRaceResult);
+        socket.on("newGame", ({ players: newPlayers, grid, positions: newPositions }) => {
+            setPlayers(newPlayers);
+            setIsGameStarted(false);
+            setLastCard(null);
+            setPositions(newPositions);
+            setCardGrid(grid);
+            setRaceResult(null);
+            setReplayError("");
+        });
 
         return () => {
             socket.off("updatePlayers");
@@ -52,15 +62,32 @@ const GameHost = () => {
             socket.off("updateGrid");
             socket.off("updatePosition");
             socket.off("gameWon");
+            socket.off("distributionUpdate");
+            socket.off("newGame");
         };
 
 
     }, [socket, roomId]);
 
+    const formatBets = (bet) => Object.entries(bet)
+        .filter(([, amount]) => amount > 0)
+        .map(([suit, amount]) => `${amount} ${suit}`)
+        .join(", ") || "No bets";
+
+    const formatDistributions = (distributions) => distributions.length
+        ? distributions.map(({ recipientUsername, amount }) => `${amount} to ${recipientUsername}`).join(", ")
+        : "None";
+
+    const handleReplay = () => {
+        socket.emit("playAgain", roomId, (response) => {
+            if (!response.success) setReplayError(response.message);
+        });
+    };
+
     return (
         <div className="game-host-container">
             <h1>Game Host</h1>
-            {(players.length > 0) ? (
+            {!raceResult && ((players.length > 0) ? (
                 <div>
                     <h2>Players in Room:</h2>
                     <ul>
@@ -79,7 +106,7 @@ const GameHost = () => {
                 </div>
             ) : (
                 <p>No other players in the room</p>
-            )}
+            ))}
             {!isGameStarted && (<h3>Waiting for players to confirm their bets...</h3>)}
             {isGameStarted && (
                 <>
@@ -89,7 +116,7 @@ const GameHost = () => {
                 </>
             )}
 
-            <div className="card-container">
+            {!raceResult && <div className="card-container">
                 {cardGrid.map((row, rowIndex) => (
                     <div key={rowIndex} className="card-row">
                     {row.map((card, colIndex) => (
@@ -99,9 +126,41 @@ const GameHost = () => {
                     ))}
                     </div>
                 ))}
-            </div>
+            </div>}
 
-            <RaceResults result={raceResult} />
+            {raceResult && (
+                <section className="host-results">
+                    <h2>{raceResult.winner.replace("_ace", "")} won the race</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Player</th>
+                                <th>Bets</th>
+                                <th>Units to give</th>
+                                <th>Gives drinks to</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {raceResult.players.map((player) => (
+                                <tr key={player.socketId}>
+                                    <td>{player.username}</td>
+                                    <td>{formatBets(player.bet)}</td>
+                                    <td>{player.drinkAllowance}</td>
+                                    <td>{formatDistributions(player.distributions)}</td>
+                                    <td>{player.distributionConfirmed ? "Complete" : "Distributing"}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {raceResult.allDistributed ? (
+                        <button onClick={handleReplay}>Replay</button>
+                    ) : (
+                        <p>Waiting for players to finish distributing their drinks...</p>
+                    )}
+                    {replayError && <p className="distribution-error">{replayError}</p>}
+                </section>
+            )}
 
 
 
