@@ -4,3 +4,30 @@
   align-items: center;
   height: 100vh;
 }
+
+.host-invite {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.host-invite__qr {
+  display: block;
+  max-width: 100%;
+  border: 1px solid var(--gold);
+}
+
+.host-invite__details {
+  flex: 1 1 110px;
+  display: grid;
+  gap: 8px;
+}
+
+.host-invite__details a {
+  color: var(--gold-light);
+  font-size: 13px;
+  text-underline-offset: 3px;
+}

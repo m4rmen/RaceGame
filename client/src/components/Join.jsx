@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import "./Join.css";
 
 export default function Join() {
   const navigate = useNavigate();
+  const { roomId } = useParams();
+  const invitedRoom = /^[0-9]{4}$/.test(roomId) ? roomId : null;
   const socket = useSocket();
   const [roomCode, setRoomCode] = useState("");
   const [userName, setUserName] = useState("");
@@ -13,19 +15,26 @@ export default function Join() {
   const join = (event) => {
     event.preventDefault();
     if (!socket) return;
-    socket.emit("joinRoom", userName.trim(), roomCode.trim(), (response) => {
+    const targetRoom = invitedRoom || roomCode.trim();
+    const name = userName.trim();
+    if (!name) {
+      setError("Enter your name to join the race.");
+      return;
+    }
+    setError("");
+    socket.emit("joinRoom", name, targetRoom, (response) => {
       if (!response.success) {
         setError(response.message);
         return;
       }
-      sessionStorage.setItem("currentRoomId", roomCode.trim());
+      sessionStorage.setItem("currentRoomId", targetRoom);
       sessionStorage.setItem("raceRole", "player");
-      navigate(`/waitingroom/${roomCode.trim()}`);
+      navigate(`/waitingroom/${targetRoom}`, { replace: Boolean(invitedRoom) });
     });
   };
   return (
     <div className="app-shell staging-page">
-      <ClubHeader label="Join the field" />
+      <ClubHeader roomId={invitedRoom} label="Join the field" />
       <main className="staging-layout">
         <div>
           <span className="eyebrow">Your place at the track</span>
@@ -35,8 +44,9 @@ export default function Join() {
             place.
           </h1>
           <p className="page-intro">
-            A seat in the stands is waiting. Enter the code from your host and choose
-            your racing name.
+            {invitedRoom
+              ? "Enter your name to take your place in the paddock."
+              : "Enter the code from your host and choose your racing name."}
           </p>
           <div className="join-decoration" aria-hidden="true">
             ♠ <span>♥</span> ♦ ♣
@@ -45,20 +55,24 @@ export default function Join() {
         <form className="join-form club-panel" onSubmit={join}>
           <span className="eyebrow">Enter the race</span>
           <h2>Join a room</h2>
-          <label className="club-label" htmlFor="roomCode">
-            Four-digit race code
-          </label>
-          <input
-            className="club-input"
-            id="roomCode"
-            inputMode="numeric"
-            pattern="[0-9]{4}"
-            maxLength="4"
-            required
-            value={roomCode}
-            onChange={(event) => setRoomCode(event.target.value)}
-            placeholder="0000"
-          />
+          {!invitedRoom && (
+            <>
+              <label className="club-label" htmlFor="roomCode">
+                Four-digit race code
+              </label>
+              <input
+                className="club-input"
+                id="roomCode"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                maxLength="4"
+                required
+                value={roomCode}
+                onChange={(event) => setRoomCode(event.target.value)}
+                placeholder="0000"
+              />
+            </>
+          )}
           <label className="club-label" htmlFor="userName">
             Your name
           </label>
