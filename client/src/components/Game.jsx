@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
@@ -15,7 +15,9 @@ const suits = [
 
 export default function Game() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const socket = useSocket();
+  const playerId = socket?.auth?.sessionId;
   const [players, setPlayers] = useState([]);
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [betConfirmed, setBetConfirmed] = useState(false);
@@ -31,14 +33,48 @@ export default function Game() {
 
   useEffect(() => {
     if (!socket) return;
-    socket.emit("getPlayers", roomId, (inRoom) => {
-      setPlayers(inRoom || []);
-      setCurrentPlayer(inRoom?.find((player) => player.socketId === socket.id) || null);
-    });
+    const applySnapshot = (state) => {
+      if (!state) return;
+      onPlayers(state.players);
+      setBetConfirmed(
+        Boolean(
+          state.players.find((player) => player.socketId === playerId)?.betConfirmed,
+        ),
+      );
+      setIsGameStarted(
+        ["racing", "finished", "postDrinking", "complete"].includes(state.phase),
+      );
+      setCardGrid(state.grid);
+      setLastCard(state.lastCard);
+      setCeremony(state.ceremony);
+      setPostCeremony(state.postCeremony);
+      setPostDrinkingDone(state.phase === "complete");
+      setRaceResult(state.raceResult);
+      const current = state.raceResult?.players.find(
+        (player) => player.socketId === playerId,
+      );
+      setDistribution(
+        Object.fromEntries(
+          current?.distributions.map((item) => [item.recipientId, item.amount]) || [],
+        ),
+      );
+    };
+    const resume = () => {
+      socket.emit("resumeRoom", roomId, (response) => {
+        if (response.success) applySnapshot(response.state);
+        else {
+          sessionStorage.removeItem("currentRoomId");
+          sessionStorage.removeItem("raceRole");
+          navigate("/join");
+        }
+      });
+    };
+    socket.on("connect", resume);
+    if (socket.connected) resume();
     const onPlayers = (nextPlayers) => {
       setPlayers(nextPlayers);
       setCurrentPlayer(
-        nextPlayers.find((player) => player.socketId === socket.id) || null,
+        nextPlayers.find((player) => player.socketId === playerId) || null,
       );
     };
     const onStart = ({ grid }) => {
@@ -79,7 +115,25 @@ export default function Game() {
     socket.on("gameWon", onWon);
     socket.on("distributionUpdate", setRaceResult);
     socket.on("newGame", onNewGame);
+    const onRoomDeleted = () => {
+      sessionStorage.removeItem("currentRoomId");
+      sessionStorage.removeItem("raceRole");
+      navigate("/join");
+    };
+    socket.on("roomDeleted", onRoomDeleted);
+    const onPlayerRemoved = (removedId) => {
+      if (removedId === playerId) onRoomDeleted();
+      else {
+        setDistribution((current) => {
+          const next = { ...current };
+          delete next[removedId];
+          return next;
+        });
+      }
+    };
+    socket.on("playerRemoved", onPlayerRemoved);
     return () => {
+      socket.off("connect", resume);
       socket.off("updatePlayers", onPlayers);
       socket.off("startGame", onStart);
       socket.off("drinkingCeremony", setCeremony);
@@ -90,8 +144,10 @@ export default function Game() {
       socket.off("gameWon", onWon);
       socket.off("distributionUpdate", setRaceResult);
       socket.off("newGame", onNewGame);
+      socket.off("roomDeleted", onRoomDeleted);
+      socket.off("playerRemoved", onPlayerRemoved);
     };
-  }, [socket, roomId]);
+  }, [socket, roomId, playerId, navigate]);
 
   const handleBet = (change, suit) => {
     if (!currentPlayer || betConfirmed) return;
@@ -103,7 +159,7 @@ export default function Game() {
     socket.emit("playerBetChange", bet, roomId);
   };
   const resultForCurrentPlayer = raceResult?.players.find(
-    (player) => player.socketId === socket?.id,
+    (player) => player.socketId === playerId,
   );
   const distributedTotal = Object.values(distribution).reduce(
     (total, amount) => total + amount,
@@ -128,15 +184,15 @@ export default function Game() {
     });
   const playerName =
     currentPlayer?.username ||
-    players.find((player) => player.socketId === socket?.id)?.username;
+    players.find((player) => player.socketId === playerId)?.username;
   const ceremonyPlayer = ceremony?.players[ceremony.currentIndex];
   const myCeremonyEntry = ceremony?.players.find(
-    (player) => player.socketId === socket?.id,
+    (player) => player.socketId === playerId,
   );
-  const isMyTurn = ceremonyPlayer?.socketId === socket?.id;
+  const isMyTurn = ceremonyPlayer?.socketId === playerId;
   const activePostPlayer = postCeremony?.players[postCeremony.currentIndex];
   const myPostEntry = postCeremony?.players.find(
-    (player) => player.socketId === socket?.id,
+    (player) => player.socketId === playerId,
   );
 
   return (
@@ -178,13 +234,13 @@ export default function Game() {
           </span>
           <div className="player-ceremony__spotlight" key={activePostPlayer?.socketId}>
             <span>
-              {activePostPlayer?.socketId === socket?.id
+              {activePostPlayer?.socketId === playerId
                 ? "Your final toast"
                 : "Now in the spotlight"}
             </span>
             <h2>{activePostPlayer?.username}</h2>
             <p>
-              {activePostPlayer?.socketId === socket?.id
+              {activePostPlayer?.socketId === playerId
                 ? "Take the drinks given to you, then tell the host you're ready."
                 : "The next name is coming up."}
             </p>
@@ -260,7 +316,7 @@ export default function Game() {
                 <h3>Choose your recipients</h3>
                 <div className="distribution-list">
                   {raceResult.players
-                    .filter((player) => player.socketId !== socket.id)
+                    .filter((player) => player.socketId !== playerId)
                     .map((player) => (
                       <div className="distribution-player" key={player.socketId}>
                         <span>{player.username}</span>

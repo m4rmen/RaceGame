@@ -11,16 +11,39 @@ export default function WaitingRoom() {
   const [players, setPlayers] = useState([]);
   useEffect(() => {
     if (!socket) return;
-    socket.emit("getPlayers", roomId, (inRoom) => setPlayers(inRoom || []));
+    const resume = () => {
+      socket.emit("resumeRoom", roomId, (response) => {
+        if (!response.success) {
+          sessionStorage.removeItem("currentRoomId");
+          sessionStorage.removeItem("raceRole");
+          navigate("/join");
+          return;
+        }
+        setPlayers(response.state.players);
+        if (response.state.phase !== "lobby") navigate(`/game/${roomId}`);
+      });
+    };
+    socket.on("connect", resume);
+    if (socket.connected) resume();
     const onPlayers = (updated) => setPlayers(updated);
-    const onDeleted = () => navigate("/join");
+    const onDeleted = () => {
+      sessionStorage.removeItem("currentRoomId");
+      sessionStorage.removeItem("raceRole");
+      navigate("/join");
+    };
     const onBetting = () => navigate(`/game/${roomId}`);
     socket.on("updatePlayers", onPlayers);
     socket.on("roomDeleted", onDeleted);
+    const onPlayerRemoved = (removedId) => {
+      if (removedId === socket.auth.sessionId) onDeleted();
+    };
+    socket.on("playerRemoved", onPlayerRemoved);
     socket.on("bettingPhase", onBetting);
     return () => {
+      socket.off("connect", resume);
       socket.off("updatePlayers", onPlayers);
       socket.off("roomDeleted", onDeleted);
+      socket.off("playerRemoved", onPlayerRemoved);
       socket.off("bettingPhase", onBetting);
     };
   }, [socket, roomId, navigate]);

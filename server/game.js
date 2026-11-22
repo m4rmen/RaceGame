@@ -29,6 +29,17 @@ class Player {
 const positions = { First: "1st", Second: "2nd", Third: "3rd", Fourth: "4th" };
 
 class Game {
+  static fromJSON(data) {
+    const game = Object.assign(Object.create(Game.prototype), data);
+    game.players = data.players.map((player) =>
+      Object.assign(Object.create(Player.prototype), player),
+    );
+    game.sockets = Object.fromEntries(
+      game.players.map((player) => [player.socketId, player]),
+    );
+    return game;
+  }
+
   cardValues = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "jack", "queen", "king"];
   suits = ["hearts", "diamonds", "spades", "clubs"];
   deck = [];
@@ -52,6 +63,7 @@ class Game {
   postDrinkIndex = 0;
   gameWon = false;
   winner = null;
+  lastCard = null;
   sockets = {};
   positions = {
     clubs_ace: positions.Fourth,
