@@ -96,13 +96,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 8px 15px;
 }
 .ceremony-stage__amount strong {
   font:
     clamp(96px, 13vw, 180px) Georgia,
     serif;
-  line-height: 0.85;
+  line-height: 1.1;
   color: var(--tier-color);
   animation: ceremony-number 0.6s 0.25s cubic-bezier(0.2, 1.5, 0.4, 1) both;
 }
@@ -125,6 +126,24 @@
   font-size: 13px;
   color: var(--cream);
   text-transform: capitalize;
+}
+.ceremony-callout {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px auto;
+  padding: 10px 16px;
+  border: 1px solid var(--gold);
+  background: #10291f;
+  overflow-wrap: anywhere;
+}
+.ceremony-callout p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ceremony-callout strong {
+  color: var(--gold-light);
 }
 .ceremony-stage__tokens {
   display: flex;

@@ -104,6 +104,8 @@ test("a host and player can resume a shared room after reconnecting", async () =
       game.phase = "finished";
       game.gameWon = true;
       game.winner = "clubs_ace";
+      game.addPlayer("Bea", absentId);
+      game.players.at(-1).distributionConfirmed = true;
       return { changed: true };
     });
     const finished = await resumedPlayer
@@ -111,7 +113,9 @@ test("a host and player can resume a shared room after reconnecting", async () =
       .emitWithAck("resumeRoom", roomId);
     assert.equal(finished.state.raceResult.players[0].drinkAllowance, 4);
     assert.deepEqual(
-      await resumedPlayer.timeout(2000).emitWithAck("submitDistribution", roomId, {}),
+      await resumedPlayer
+        .timeout(2000)
+        .emitWithAck("submitDistribution", roomId, { [absentId]: 4 }),
       { success: true },
     );
     const postDrinking = await resumedHost
@@ -119,7 +123,17 @@ test("a host and player can resume a shared room after reconnecting", async () =
       .emitWithAck("resumeRoom", roomId);
     assert.equal(postDrinking.state.phase, "postDrinking");
     assert.deepEqual(
+      postDrinking.state.postCeremony.players.find(
+        (entry) => entry.socketId === absentId,
+      ).sources,
+      [{ giverId: playerId, username: "Ada", amount: 4, gaveAll: true }],
+    );
+    assert.deepEqual(
       await resumedHost.timeout(2000).emitWithAck("confirmPostDrink", roomId, playerId),
+      { success: true },
+    );
+    assert.deepEqual(
+      await resumedHost.timeout(2000).emitWithAck("confirmPostDrink", roomId, absentId),
       { success: true },
     );
     assert.deepEqual(await resumedHost.timeout(2000).emitWithAck("playAgain", roomId), {
@@ -130,6 +144,10 @@ test("a host and player can resume a shared room after reconnecting", async () =
     assert.equal(replay.state.players[0].bet.clubs, 0);
     assert.deepEqual(
       await resumedHost.timeout(2000).emitWithAck("removePlayer", roomId, playerId),
+      { success: true },
+    );
+    assert.deepEqual(
+      await resumedHost.timeout(2000).emitWithAck("removePlayer", roomId, absentId),
       { success: true },
     );
     const emptyRoom = await resumedHost.timeout(2000).emitWithAck("resumeRoom", roomId);

@@ -1,4 +1,10 @@
 .race-track {
+  --runner-width: clamp(58px, 6vw, 82px);
+  --runner-height: calc(var(--runner-width) * 1.43);
+  --runner-gutter: calc(var(--runner-width) / 2 + 6px);
+  --lane-name-width: 102px;
+  --lane-distance-width: 45px;
+  --lane-gap: 16px;
   position: relative;
   overflow: hidden;
   border: 1px solid var(--gold);
@@ -85,15 +91,18 @@
   padding: 24px 0 18px;
 }
 .race-track__scale {
-  padding: 0 32px 15px 118px;
+  padding: 0 calc(var(--lane-distance-width) + var(--lane-gap)) 15px
+    calc(var(--lane-name-width) + var(--lane-gap) + var(--runner-gutter));
   font-size: 9px;
 }
 .race-lane {
   display: grid;
-  grid-template-columns: 102px minmax(0, 1fr) 45px;
+  grid-template-columns: var(--lane-name-width) minmax(0, 1fr) var(
+      --lane-distance-width
+    );
   align-items: center;
-  gap: 16px;
-  min-height: clamp(80px, 8vw, 116px);
+  gap: var(--lane-gap);
+  min-height: calc(var(--runner-height) + 18px);
   border-top: 1px solid #d7c69a2e;
 }
 .race-lane:last-child {
@@ -118,15 +127,15 @@
   color: #da9a82;
 }
 .race-lane__rail {
-  height: 65px;
+  height: calc(var(--runner-height) + 8px);
   position: relative;
-  margin-right: 22px;
+  margin-inline: var(--runner-gutter);
 }
 .race-lane__rail:before {
   content: "";
   position: absolute;
   left: 0;
-  right: 0;
+  right: calc(1px - var(--runner-gutter));
   top: 50%;
   height: 2px;
   background: linear-gradient(90deg, #a48b57, #d9c18b);
@@ -134,7 +143,7 @@
 .race-lane__rail:after {
   content: "";
   position: absolute;
-  right: 0;
+  right: calc(1px - var(--runner-gutter));
   top: 4px;
   bottom: 4px;
   border-right: 3px double var(--gold-light);
@@ -159,12 +168,10 @@
 }
 .race-lane__runner img {
   display: block;
-  width: 39px;
-  height: 56px;
-  object-fit: cover;
-  border-radius: 3px;
+  width: var(--runner-width);
+  height: var(--runner-height);
+  object-fit: contain;
   box-shadow: 0 4px 18px #0008;
-  border: 2px solid #eadbb8;
 }
 .race-lane__distance {
   font:
@@ -261,6 +268,10 @@
 }
 @media (max-width: 620px) {
   .race-track {
+    --runner-width: clamp(44px, 10vw, 54px);
+    --lane-name-width: 62px;
+    --lane-distance-width: 31px;
+    --lane-gap: 8px;
     padding: 18px 15px;
   }
   .race-track__heading {
@@ -270,15 +281,6 @@
     width: 43px;
     height: 62px;
   }
-  .race-track__scale {
-    padding-left: 72px;
-    padding-right: 0;
-  }
-  .race-lane {
-    grid-template-columns: 62px minmax(0, 1fr) 31px;
-    gap: 8px;
-    min-height: 74px;
-  }
   .race-lane__name {
     display: grid;
     justify-items: center;
@@ -287,13 +289,6 @@
   }
   .race-lane__symbol {
     font-size: 22px;
-  }
-  .race-lane__rail {
-    margin-right: 12px;
-  }
-  .race-lane__runner img {
-    width: 28px;
-    height: 42px;
   }
   .race-lane__distance {
     font-size: 15px;

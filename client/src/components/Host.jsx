@@ -58,41 +58,37 @@ export default function Host() {
   return (
     <div className="app-shell staging-page">
       <ClubHeader roomId={code} label="Host the event" />
-      <main className="staging-layout">
-        <div>
+      <main className="staging-layout host-layout">
+        <header className="host-layout__intro">
           <span className="eyebrow">The announcer’s box</span>
-          <h1 className="page-title">
-            Gather your
-            <br />
-            field.
-          </h1>
+          <h1 className="page-title">Gather your field.</h1>
           <p className="page-intro">
             Invite players to the race. Once everyone has joined, open the betting ring.
           </p>
-          <div className="staging-code club-panel">
-            <span className="eyebrow">Your race code</span>
-            <strong>{code || "····"}</strong>
-            {inviteUrl && (
-              <div className="host-invite">
-                <QRCodeCanvas
-                  className="host-invite__qr"
-                  value={inviteUrl}
-                  size={168}
-                  style={{ height: "auto" }}
-                  marginSize={4}
-                  bgColor="#f5ecd8"
-                  fgColor="#142720"
-                  aria-hidden="true"
-                />
-                <div className="host-invite__details">
-                  <small>Scan to join with your phone, or enter the race code.</small>
-                  <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
-                    Open invite link
-                  </a>
-                </div>
+        </header>
+        <div className="staging-code club-panel">
+          <span className="eyebrow">Your race code</span>
+          <strong>{code || "····"}</strong>
+          {inviteUrl && (
+            <div className="host-invite">
+              <QRCodeCanvas
+                className="host-invite__qr"
+                value={inviteUrl}
+                size={168}
+                style={{ height: "auto" }}
+                marginSize={4}
+                bgColor="#f5ecd8"
+                fgColor="#142720"
+                aria-hidden="true"
+              />
+              <div className="host-invite__details">
+                <small>Scan to join with your phone, or enter the race code.</small>
+                <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                  Open invite link
+                </a>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <div className="staging-roster club-panel">
           <span className="eyebrow">The paddock</span>

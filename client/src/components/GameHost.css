@@ -123,18 +123,24 @@
 .host-page__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  grid-template-areas: "track rail";
   gap: 22px;
   align-items: start;
 }
 .host-page__main {
+  grid-area: track;
+  min-width: 0;
+}
+.host-page__rail {
+  grid-area: rail;
+  display: grid;
+  gap: 22px;
   min-width: 0;
 }
 .host-page__action {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
-  margin-top: 20px;
+  flex-direction: column;
+  gap: 16px;
 }
 .host-page__action h3 {
   font-size: 25px;
@@ -306,7 +312,10 @@
 }
 @media (max-width: 950px) {
   .host-page__layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "rail"
+      "track";
   }
   .host-page__sidebar {
     display: none;
@@ -315,13 +324,6 @@
 @media (max-width: 600px) {
   .host-page__badge {
     display: none;
-  }
-  .host-page__action {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .host-page__action .club-button {
-    width: 100%;
   }
 }
 .host-page .host-results {
