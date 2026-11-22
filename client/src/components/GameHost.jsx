@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
@@ -26,6 +26,8 @@ export default function GameHost() {
   const [lastCard, setLastCard] = useState(null);
   const [cardGrid, setCardGrid] = useState(initialGrid);
   const [raceResult, setRaceResult] = useState(null);
+  const [revealedWinner, setRevealedWinner] = useState(null);
+  const finishWinnerReveal = useCallback(() => setRevealedWinner(null), []);
   const [ceremony, setCeremony] = useState(null);
   const [postCeremony, setPostCeremony] = useState(null);
   const [postDrinkingDone, setPostDrinkingDone] = useState(false);
@@ -49,6 +51,7 @@ export default function GameHost() {
         setLastCard(state.lastCard);
         setCardGrid(state.grid);
         setRaceResult(state.raceResult);
+        if (!state.raceResult) setRevealedWinner(null);
         setCeremony(state.ceremony);
         setPostCeremony(state.postCeremony);
         setPostDrinkingDone(state.phase === "complete");
@@ -83,6 +86,7 @@ export default function GameHost() {
       setLastCard(null);
       setCardGrid(grid);
       setRaceResult(null);
+      setRevealedWinner(null);
       setCeremony(null);
       setPostCeremony(null);
       setPostDrinkingDone(false);
@@ -95,7 +99,11 @@ export default function GameHost() {
     socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
     socket.on("updateGrid", setCardGrid);
-    socket.on("gameWon", setRaceResult);
+    const onWon = (result) => {
+      setRevealedWinner(result.winner);
+      setRaceResult(result);
+    };
+    socket.on("gameWon", onWon);
     socket.on("distributionUpdate", setRaceResult);
     socket.on("newGame", onNewGame);
     const onRoomReset = () => navigate("/host");
@@ -109,7 +117,7 @@ export default function GameHost() {
       socket.off("postDrinkingComplete", onPostComplete);
       socket.off("cardFlipped", setLastCard);
       socket.off("updateGrid", setCardGrid);
-      socket.off("gameWon", setRaceResult);
+      socket.off("gameWon", onWon);
       socket.off("distributionUpdate", setRaceResult);
       socket.off("newGame", onNewGame);
       socket.off("roomReset", onRoomReset);
@@ -156,37 +164,34 @@ export default function GameHost() {
       <ClubHeader roomId={roomId} label="The announcer’s box" />
       <div className="host-page__intro">
         <div>
-          <span className="eyebrow">The Ace Race / Live event</span>
           <h1 className="page-title">
-            {postCeremony ? (
+            {!revealedWinner && postCeremony ? (
               <>
-                The final <em>toast.</em>
+                Now comes the <em>fun part.</em>
               </>
             ) : ceremony ? (
               <>
                 Wagers <em>on the line.</em>
               </>
             ) : (
-              <>
-                The race is <em>on.</em>
-              </>
+              <>{/* The race is <em>on.</em> */}</>
             )}
           </h1>
           <p className="page-intro">
-            {postCeremony
-              ? "The finish is settled. Now every rider gets their moment."
+            {!revealedWinner && postCeremony
+              ? "Time to drink the distributed bets"
               : ceremony
                 ? "Every rider takes their wager before the gates open."
-                : "Four suits. Seven lengths. One victorious ace."}
+                : ""}
           </p>
         </div>
-        <div className="host-page__badge">
+        {/* <div className="host-page__badge">
           <span>RACE NO.</span>
           <strong>01</strong>
           <span>THE CLUB COURSE</span>
-        </div>
+        </div> */}
       </div>
-      {postCeremony ? (
+      {!revealedWinner && postCeremony ? (
         <DrinkingCeremony
           ceremony={postCeremony}
           onConfirm={confirmPostDrink}
@@ -201,7 +206,7 @@ export default function GameHost() {
           confirming={confirmingDrink}
           error={ceremonyError}
         />
-      ) : raceResult ? (
+      ) : raceResult && !revealedWinner ? (
         <section className="host-results club-panel">
           <div className="section-heading">
             <div>
@@ -272,8 +277,7 @@ export default function GameHost() {
         </section>
       ) : (
         <div className="host-page__layout">
-          <div className="host-page__main">
-            <RaceTrack grid={cardGrid} lastCard={lastCard} />
+          <div className="host-page__rail">
             <div className="host-page__action club-panel">
               <div>
                 <span className="eyebrow">
@@ -289,63 +293,72 @@ export default function GameHost() {
               {isGameStarted && (
                 <button
                   className="club-button"
+                  disabled={Boolean(revealedWinner)}
                   onClick={() => socket.emit("flipCard", roomId)}
                 >
                   Flip next card <span aria-hidden="true">→</span>
                 </button>
               )}
             </div>
-          </div>
-          <aside className="host-page__sidebar club-panel">
-            <span className="eyebrow">The paddock</span>
-            <h2>
-              Players <small>{players.length}</small>
-            </h2>
-            <p className="club-muted">
-              {isGameStarted
-                ? "The field is set."
-                : `${confirmedCount} of ${players.length} wagers confirmed`}
-            </p>
-            <div className="host-player-list">
-              {players.length ? (
-                players.map((player, index) => (
-                  <div className="host-player" key={player.socketId}>
-                    <span className="host-player__number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div>
-                      <strong>{player.username}</strong>
-                      <small>
-                        {isGameStarted
-                          ? formatBets(player.bet)
-                          : player.betConfirmed
-                            ? "Wager confirmed"
-                            : "Placing wager"}
-                      </small>
+            <aside className="host-page__sidebar club-panel">
+              <span className="eyebrow">The paddock</span>
+              <h2>
+                Players <small>{players.length}</small>
+              </h2>
+              <p className="club-muted">
+                {isGameStarted
+                  ? "The field is set."
+                  : `${confirmedCount} of ${players.length} wagers confirmed`}
+              </p>
+              <div className="host-player-list">
+                {players.length ? (
+                  players.map((player, index) => (
+                    <div className="host-player" key={player.socketId}>
+                      <span className="host-player__number">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div>
+                        <strong>{player.username}</strong>
+                        <small>
+                          {isGameStarted
+                            ? formatBets(player.bet)
+                            : player.betConfirmed
+                              ? "Wager confirmed"
+                              : "Placing wager"}
+                        </small>
+                      </div>
+                      <span
+                        className={`host-player__dot ${player.betConfirmed ? "is-ready" : ""}`}
+                      />
+                      <button
+                        className="remove-player-button"
+                        type="button"
+                        aria-label={`Remove ${player.username} from the room`}
+                        onClick={() =>
+                          socket.emit("removePlayer", roomId, player.socketId)
+                        }
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <span
-                      className={`host-player__dot ${player.betConfirmed ? "is-ready" : ""}`}
-                    />
-                    <button
-                      className="remove-player-button"
-                      type="button"
-                      aria-label={`Remove ${player.username} from the room`}
-                      onClick={() =>
-                        socket.emit("removePlayer", roomId, player.socketId)
-                      }
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <p className="club-muted">Share the room code to invite players.</p>
-              )}
-            </div>
-            <div className="host-page__room">
-              ROOM CODE <strong>{roomId}</strong>
-            </div>
-          </aside>
+                  ))
+                ) : (
+                  <p className="club-muted">Share the room code to invite players.</p>
+                )}
+              </div>
+              <div className="host-page__room">
+                ROOM CODE <strong>{roomId}</strong>
+              </div>
+            </aside>
+          </div>
+          <div className="host-page__main">
+            <RaceTrack
+              grid={cardGrid}
+              lastCard={lastCard}
+              winner={revealedWinner}
+              onWinnerRevealEnd={finishWinnerReveal}
+            />
+          </div>
         </div>
       )}
     </div>

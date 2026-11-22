@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
-import { wagerDetails, wagerTier } from "./DrinkingCeremony";
+import { FullAllowanceCallout, wagerDetails, wagerTier } from "./DrinkingCeremony";
 import "./Game.css";
 
 const suits = [
@@ -25,6 +25,8 @@ export default function Game() {
   const [cardGrid, setCardGrid] = useState([]);
   const [lastCard, setLastCard] = useState(null);
   const [raceResult, setRaceResult] = useState(null);
+  const [revealedWinner, setRevealedWinner] = useState(null);
+  const finishWinnerReveal = useCallback(() => setRevealedWinner(null), []);
   const [ceremony, setCeremony] = useState(null);
   const [postCeremony, setPostCeremony] = useState(null);
   const [postDrinkingDone, setPostDrinkingDone] = useState(false);
@@ -50,6 +52,7 @@ export default function Game() {
       setPostCeremony(state.postCeremony);
       setPostDrinkingDone(state.phase === "complete");
       setRaceResult(state.raceResult);
+      if (!state.raceResult) setRevealedWinner(null);
       const current = state.raceResult?.players.find(
         (player) => player.socketId === playerId,
       );
@@ -85,6 +88,7 @@ export default function Game() {
       setPostDrinkingDone(false);
     };
     const onWon = (result) => {
+      setRevealedWinner(result.winner);
       setRaceResult(result);
       setDistribution({});
     };
@@ -95,6 +99,7 @@ export default function Game() {
       setCardGrid(grid);
       setLastCard(null);
       setRaceResult(null);
+      setRevealedWinner(null);
       setCeremony(null);
       setPostCeremony(null);
       setPostDrinkingDone(false);
@@ -194,6 +199,7 @@ export default function Game() {
   const myPostEntry = postCeremony?.players.find(
     (player) => player.socketId === playerId,
   );
+  const showResults = raceResult && !revealedWinner;
 
   return (
     <div className="app-shell player-page">
@@ -201,7 +207,7 @@ export default function Game() {
       <div className="player-page__intro">
         <span className="eyebrow">The Ace Race / Your seat at the track</span>
         <h1 className="page-title">
-          {raceResult
+          {showResults
             ? postCeremony
               ? "The final toast."
               : "The result is in."
@@ -212,7 +218,7 @@ export default function Game() {
                 : "Back your horse."}
         </h1>
         <p className="page-intro">
-          {raceResult
+          {showResults
             ? postCeremony
               ? "The host is calling each player for their final tally."
               : "The winning wager pays double. Choose who receives your drinks."
@@ -223,7 +229,7 @@ export default function Game() {
                 : "Choose your ace and set your wager before the gates open."}
         </p>
       </div>
-      {postCeremony ? (
+      {!revealedWinner && postCeremony ? (
         <section
           className="player-ceremony player-ceremony--finale club-panel"
           aria-live="polite"
@@ -244,6 +250,7 @@ export default function Game() {
                 ? "Take the drinks given to you, then tell the host you're ready."
                 : "The next name is coming up."}
             </p>
+            <FullAllowanceCallout recipient={activePostPlayer} />
           </div>
           <div className="player-ceremony__ticket">
             <span className="eyebrow">Your final tally</span>
@@ -291,7 +298,7 @@ export default function Game() {
             </p>
           </div>
         </section>
-      ) : raceResult ? (
+      ) : showResults ? (
         <section className="distribution-panel club-panel">
           <span className="eyebrow">Official race result</span>
           <h2>{raceResult.winner.replace("_ace", "")} wins.</h2>
@@ -355,7 +362,6 @@ export default function Game() {
         </section>
       ) : isGameStarted ? (
         <>
-          <RaceTrack grid={cardGrid} lastCard={lastCard} />
           <div className="player-race-note club-panel">
             <span className="eyebrow">Your wager</span>
             <strong>
@@ -370,6 +376,12 @@ export default function Game() {
                 : "Loading…"}
             </strong>
           </div>
+          <RaceTrack
+            grid={cardGrid}
+            lastCard={lastCard}
+            winner={revealedWinner}
+            onWinnerRevealEnd={finishWinnerReveal}
+          />
         </>
       ) : (
         <div className="player-page__betting">

@@ -121,8 +121,12 @@ function getPostDrinkingState(game) {
       const player = game.players.find((entry) => entry.socketId === playerId);
       const sources = game.players
         .map((giver) => ({
+          giverId: giver.socketId,
           username: giver.username,
           amount: giver.distributions[playerId] || 0,
+          gaveAll:
+            giver.distributionConfirmed &&
+            giver.distributions[playerId] === getDrinkAllowance(game, giver),
         }))
         .filter((giver) => giver.amount > 0);
       return {

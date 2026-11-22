@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import App from "./App";
 import { useSocket } from "./SocketContext";
 
@@ -41,3 +41,49 @@ test("a new player can open a room invite and join with only their name", async 
   expect(await screen.findByText("Ada")).toBeInTheDocument();
   expect(window.location.pathname).toBe("/waitingroom/3975");
 });
+
+test.each(["game", "gamehost"])(
+  "the %s view reveals the winning ace before switching away from the track",
+  (route) => {
+    jest.useFakeTimers();
+    try {
+      window.history.replaceState(null, "", `/${route}/3975`);
+      const listeners = new Map();
+      useSocket.mockReturnValue({
+        connected: false,
+        on: (event, listener) => listeners.set(event, listener),
+        off: jest.fn(),
+      });
+
+      render(<App />);
+      act(() => listeners.get("startGame")({ grid: [] }));
+      const track = screen.getByRole("region", { name: "Live race positions" });
+      act(() => {
+        listeners.get("cardFlipped")("hearts_king");
+        listeners.get("gameWon")({ winner: "hearts_ace", players: [] });
+        if (route === "gamehost") {
+          listeners.get("postDrinkingCeremony")({
+            players: [{ socketId: "player-1", username: "Ada", total: 0, sources: [] }],
+            currentIndex: 0,
+          });
+        }
+      });
+
+      expect(track).toBeInTheDocument();
+      expect(screen.getByText("Ace of hearts")).toBeInTheDocument();
+      expect(screen.getByAltText("hearts of king")).toBeInTheDocument();
+      expect(screen.queryByText("Official race result")).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Ada" })).not.toBeInTheDocument();
+
+      act(() => jest.advanceTimersByTime(3400));
+      expect(track).not.toBeInTheDocument();
+      expect(
+        route === "gamehost"
+          ? screen.getByRole("heading", { name: "Ada" })
+          : screen.getByText("Official race result"),
+      ).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  },
+);

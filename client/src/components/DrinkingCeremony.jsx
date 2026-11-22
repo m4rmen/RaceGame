@@ -13,20 +13,19 @@ export function wagerDetails(bet) {
 }
 
 export function wagerTier(total) {
-  if (total <= 4)
-    return { key: "warmup", title: "A gentle warm-up", cue: "Easy out of the gates" };
+  if (total <= 4) return { key: "warmup", title: "that's cute", cue: "wow" };
   if (total <= 8)
     return {
       key: "gallop",
-      title: "Picking up the pace",
-      cue: "The crowd is watching",
+      title: "We're watching",
+      cue: "Ok... ok...",
     };
   if (total <= 12)
-    return { key: "surge", title: "A full gallop", cue: "Hold on to your hat" };
+    return { key: "surge", title: "'s liver is made of steel", cue: "God Damn" };
   return {
     key: "legend",
-    title: "A grandstand moment",
-    cue: "The whole field takes notice",
+    title: "might actually be mentally ill",
+    cue: "holy...",
   };
 }
 
@@ -34,6 +33,22 @@ function sourceDetails(sources) {
   return sources.length
     ? sources.map(({ username, amount }) => `${amount} from ${username}`).join(" · ")
     : "No drinks assigned";
+}
+
+export function FullAllowanceCallout({ recipient }) {
+  const givers = recipient?.sources.filter((source) => source.gaveAll) || [];
+  if (givers.length === 0) return null;
+
+  return (
+    <div className="ceremony-callout">
+      {givers.map(({ giverId, username, amount }) => (
+        <p key={giverId}>
+          {username} gave all {amount} of their sips to {recipient.username}.
+        </p>
+      ))}
+      <strong>This seems personal</strong>
+    </div>
+  );
 }
 
 export default function DrinkingCeremony({
@@ -70,17 +85,15 @@ export default function DrinkingCeremony({
           <span className="ceremony-stage__ornament" aria-hidden="true">
             {finale ? "✦" : "♞"}
           </span>
-          <span className="ceremony-stage__cue">
-            {finale ? "A final toast at the finish" : tier.cue}
-          </span>
+          <span className="ceremony-stage__cue">{finale ? "Drink up!" : tier.cue}</span>
           <h2>{active.username}</h2>
           <p className="ceremony-stage__title">
             {finale
               ? {
-                  warmup: "A finishing flourish",
-                  gallop: "The victory lap",
-                  surge: "The grand finale",
-                  legend: "A standing ovation",
+                  warmup: "Light work",
+                  gallop: "Getting tipsy",
+                  surge: "Hell yeah!",
+                  legend: "Get this person their car keys",
                 }[tier.key]
               : tier.title}
           </p>
@@ -100,6 +113,7 @@ export default function DrinkingCeremony({
           <p className="ceremony-stage__bet">
             {finale ? sourceDetails(active.sources) : wagerDetails(active.bet)}
           </p>
+          {finale && <FullAllowanceCallout recipient={active} />}
           <div className="ceremony-stage__tokens" aria-hidden="true">
             {Array.from({ length: Math.min(active.total, 12) }, (_, index) => (
               <span key={index} style={{ animationDelay: `${index * 70}ms` }} />

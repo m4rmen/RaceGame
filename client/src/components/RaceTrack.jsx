@@ -1,10 +1,11 @@
 import React from "react";
+import WinnerReveal from "./WinnerReveal";
 import "./RaceTrack.css";
 
 const horses = ["clubs", "diamonds", "hearts", "spades"];
 const symbols = { clubs: "♣", diamonds: "♦", hearts: "♥", spades: "♠" };
 
-export default function RaceTrack({ grid = [], lastCard }) {
+export default function RaceTrack({ grid = [], lastCard, winner, onWinnerRevealEnd }) {
   const totalSteps = Math.max(grid.length - 1, 1);
   const sideCards = grid
     .slice(1)
@@ -115,6 +116,9 @@ export default function RaceTrack({ grid = [], lastCard }) {
         <span>ONE FINISH LINE</span>
         <span>♠ ♥ ♦ ♣</span>
       </div>
+      {winner && (
+        <WinnerReveal key={winner} winner={winner} onComplete={onWinnerRevealEnd} />
+      )}
     </section>
   );
 }

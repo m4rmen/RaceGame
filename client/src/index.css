@@ -62,7 +62,6 @@ a {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: clamp(28px, 4vw, 58px);
 }
 .club-brand {
   display: flex;
