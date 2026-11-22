@@ -1,9 +1,9 @@
-const { server, ready } = require("./app");
+const { server, ensureReady } = require("./app");
 
 module.exports = server;
 
 if (require.main === module) {
-  ready
+  ensureReady()
     .then(() => {
       const port = process.env.PORT || 5000;
       server.listen(port, () => console.log(`Server is running on port ${port}`));

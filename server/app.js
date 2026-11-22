@@ -22,31 +22,60 @@ const io = new Server(server, {
 const redis = process.env.REDIS_URL
   ? new Redis(process.env.REDIS_URL, {
       lazyConnect: true,
-      maxRetriesPerRequest: null,
+      connectTimeout: 4000,
+      commandTimeout: 5000,
+      maxRetriesPerRequest: 1,
     })
   : null;
 const adapterRedis = redis?.duplicate();
 const gameStore = new GameStore(redis);
-const ready = redis
-  ? Promise.all([redis.connect(), adapterRedis.connect()]).then(() => {
-      io.adapter(createAdapter(redis, adapterRedis, { key: "ace-race:socket.io" }));
-    })
-  : Promise.resolve();
-ready.catch((error) => console.error("Redis connection failed:", error));
+let adapterSetup;
+
+for (const [name, client] of [
+  ["commands", redis],
+  ["subscriber", adapterRedis],
+]) {
+  client?.on("error", (error) => {
+    console.error(`Redis ${name} connection failed: ${error.code || error.message}`);
+  });
+}
+
+async function ensureReady() {
+  if (!redis) return;
+  if (!adapterSetup) {
+    // Lazy commands initiate the connections. A failed attempt must not prevent
+    // this instance from initializing the adapter on a later request.
+    adapterSetup = Promise.all(
+      [redis, adapterRedis].map(async (client) => {
+        if (client.status === "end") await client.connect();
+        await client.ping();
+      }),
+    )
+      .then(() => {
+        io.adapter(createAdapter(redis, adapterRedis, { key: "ace-race:socket.io" }));
+      })
+      .catch((error) => {
+        adapterSetup = undefined;
+        throw error;
+      });
+  }
+  await adapterSetup;
+}
 
 app.get("/api/health", async (_request, response) => {
   try {
-    await ready;
+    await ensureReady();
     if (redis) await redis.ping();
     response.json({ ok: true });
-  } catch (_error) {
+  } catch (error) {
+    console.error("Redis readiness check failed:", error.code || error.message);
     response.status(503).json({ ok: false });
   }
 });
 
 io.use(async (socket, next) => {
   try {
-    await ready;
+    await ensureReady();
     const sessionId = socket.handshake.auth?.sessionId;
     socket.data.playerId =
       typeof sessionId === "string" && /^[a-f0-9-]{36}$/.test(sessionId)
@@ -54,7 +83,7 @@ io.use(async (socket, next) => {
         : socket.id;
     next();
   } catch (error) {
-    next(error);
+    next(new Error("The room server is unavailable."));
   }
 });
 
@@ -276,7 +305,11 @@ io.on("connection", (socket) => {
     if (!created) {
       const existing = await gameStore.get(roomId);
       if (existing?.organizerId !== playerId) {
-        callback({ success: false, message: "That code is already in use." });
+        callback({
+          success: false,
+          code: "ROOM_CODE_TAKEN",
+          message: "That code is already in use.",
+        });
         return;
       }
     }
@@ -522,4 +555,4 @@ io.on("connection", (socket) => {
   });
 });
 
-module.exports = { server, ready, gameStore };
+module.exports = { server, ensureReady, gameStore };
