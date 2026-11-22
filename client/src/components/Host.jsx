@@ -11,15 +11,45 @@ export default function Host() {
   const [players, setPlayers] = useState([]);
   useEffect(() => {
     if (!socket) return;
-    const roomCode = String(Math.floor(1000 + Math.random() * 9000));
-    setCode(roomCode);
-    socket.emit("createRoom", roomCode);
-    socket.emit("getPlayers", roomCode, (inRoom) => setPlayers(inRoom || []));
+    const storedCode =
+      sessionStorage.getItem("raceRole") === "host"
+        ? sessionStorage.getItem("currentRoomId")
+        : null;
+    const create = (roomCode, attempts = 0) => {
+      socket.emit("createRoom", roomCode, (response) => {
+        if (!response.success && attempts < 10) {
+          create(String(Math.floor(1000 + Math.random() * 9000)), attempts + 1);
+          return;
+        }
+        if (!response.success) return;
+        setCode(roomCode);
+        sessionStorage.setItem("currentRoomId", roomCode);
+        sessionStorage.setItem("raceRole", "host");
+        socket.emit("getPlayers", roomCode, (inRoom) => setPlayers(inRoom || []));
+      });
+    };
+    const resume = () => {
+      const roomCode = sessionStorage.getItem("currentRoomId");
+      if (!roomCode || sessionStorage.getItem("raceRole") !== "host") return;
+      socket.emit("resumeRoom", roomCode, (response) => {
+        if (response.success) {
+          setCode(roomCode);
+          setPlayers(response.state.players);
+          if (response.state.phase !== "lobby") navigate(`/gamehost/${roomCode}`);
+        } else create(roomCode);
+      });
+    };
+    socket.on("connect", resume);
+    if (storedCode) {
+      if (socket.connected) resume();
+    } else create(String(Math.floor(1000 + Math.random() * 9000)));
     const onPlayers = (updated) => setPlayers(updated);
     socket.on("updatePlayers", onPlayers);
-    sessionStorage.setItem("currentRoomId", roomCode);
-    return () => socket.off("updatePlayers", onPlayers);
-  }, [socket]);
+    return () => {
+      socket.off("connect", resume);
+      socket.off("updatePlayers", onPlayers);
+    };
+  }, [socket, navigate]);
   return (
     <div className="app-shell staging-page">
       <ClubHeader roomId={code} label="Host the event" />
@@ -53,6 +83,14 @@ export default function Host() {
                   <span>{String(index + 1).padStart(2, "0")}</span>
                   <strong>{player.username}</strong>
                   <i>READY</i>
+                  <button
+                    className="remove-player-button"
+                    type="button"
+                    aria-label={`Remove ${player.username} from the room`}
+                    onClick={() => socket.emit("removePlayer", code, player.socketId)}
+                  >
+                    Remove
+                  </button>
                 </div>
               ))
             ) : (

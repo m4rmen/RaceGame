@@ -19,6 +19,7 @@ export default function Join() {
         return;
       }
       sessionStorage.setItem("currentRoomId", roomCode.trim());
+      sessionStorage.setItem("raceRole", "player");
       navigate(`/waitingroom/${roomCode.trim()}`);
     });
   };

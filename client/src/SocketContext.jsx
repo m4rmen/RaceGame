@@ -11,10 +11,18 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const serverUrl =
-      process.env.REACT_APP_SERVER_URL ||
-      `${window.location.protocol}//${window.location.hostname}:5000`;
-    const newSocket = io(serverUrl, { transports: ["websocket"] });
+    const sessionId =
+      sessionStorage.getItem("raceSessionId") || window.crypto.randomUUID();
+    sessionStorage.setItem("raceSessionId", sessionId);
+    const serverUrl = process.env.REACT_APP_SERVER_URL || window.location.origin;
+    const newSocket = io(serverUrl, {
+      path: "/api/socket.io",
+      auth: { sessionId },
+      transports:
+        process.env.NODE_ENV === "production"
+          ? ["websocket"]
+          : ["polling", "websocket"],
+    });
     setSocket(newSocket);
     return () => newSocket.disconnect();
   }, []);

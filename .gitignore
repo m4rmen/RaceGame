@@ -3,3 +3,7 @@ node_modules
 .pnp.js
 coverage
 build
+.vercel
+.env
+.env.local
+.env.*.local

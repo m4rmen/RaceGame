@@ -10,8 +10,12 @@ export default function Home() {
   useEffect(() => {
     const roomId = sessionStorage.getItem("currentRoomId");
     if (roomId && socket) {
-      socket.emit("deleteRoom", roomId);
+      socket.emit(
+        sessionStorage.getItem("raceRole") === "host" ? "deleteRoom" : "quitGame",
+        roomId,
+      );
       sessionStorage.removeItem("currentRoomId");
+      sessionStorage.removeItem("raceRole");
     }
   }, [socket]);
   return (

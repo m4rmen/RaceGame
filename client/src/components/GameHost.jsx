@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
@@ -19,6 +19,7 @@ const initialGrid = [
 
 export default function GameHost() {
   const { roomId } = useParams();
+  const navigate = useNavigate();
   const socket = useSocket();
   const [players, setPlayers] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
@@ -34,7 +35,27 @@ export default function GameHost() {
 
   useEffect(() => {
     if (!socket) return;
-    socket.emit("getPlayers", roomId, (inRoom) => setPlayers(inRoom || []));
+    const resume = () => {
+      socket.emit("resumeRoom", roomId, (response) => {
+        if (!response.success || !response.isHost) {
+          navigate("/host");
+          return;
+        }
+        const state = response.state;
+        setPlayers(state.players);
+        setIsGameStarted(
+          ["racing", "finished", "postDrinking", "complete"].includes(state.phase),
+        );
+        setLastCard(state.lastCard);
+        setCardGrid(state.grid);
+        setRaceResult(state.raceResult);
+        setCeremony(state.ceremony);
+        setPostCeremony(state.postCeremony);
+        setPostDrinkingDone(state.phase === "complete");
+      });
+    };
+    socket.on("connect", resume);
+    if (socket.connected) resume();
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
       setCardGrid(grid);
@@ -77,7 +98,10 @@ export default function GameHost() {
     socket.on("gameWon", setRaceResult);
     socket.on("distributionUpdate", setRaceResult);
     socket.on("newGame", onNewGame);
+    const onRoomReset = () => navigate("/host");
+    socket.on("roomReset", onRoomReset);
     return () => {
+      socket.off("connect", resume);
       socket.off("updatePlayers", setPlayers);
       socket.off("startGame", onStart);
       socket.off("drinkingCeremony", onCeremony);
@@ -88,8 +112,9 @@ export default function GameHost() {
       socket.off("gameWon", setRaceResult);
       socket.off("distributionUpdate", setRaceResult);
       socket.off("newGame", onNewGame);
+      socket.off("roomReset", onRoomReset);
     };
-  }, [socket, roomId]);
+  }, [socket, roomId, navigate]);
 
   const formatBets = (bet) =>
     Object.entries(bet)
@@ -301,6 +326,16 @@ export default function GameHost() {
                     <span
                       className={`host-player__dot ${player.betConfirmed ? "is-ready" : ""}`}
                     />
+                    <button
+                      className="remove-player-button"
+                      type="button"
+                      aria-label={`Remove ${player.username} from the room`}
+                      onClick={() =>
+                        socket.emit("removePlayer", roomId, player.socketId)
+                      }
+                    >
+                      Remove
+                    </button>
                   </div>
                 ))
               ) : (

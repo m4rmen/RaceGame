@@ -411,6 +411,21 @@ a:focus-visible {
   color: var(--muted);
   line-height: 1.6;
 }
+.remove-player-button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font:
+    11px "DM Sans",
+    sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.remove-player-button:hover,
+.remove-player-button:focus-visible {
+  color: var(--cream);
+}
 .join-form {
   display: flex;
   flex-direction: column;
