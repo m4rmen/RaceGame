@@ -343,3 +343,99 @@
 .player-page .distribution-error {
   color: #e8a397;
 }
+.player-ceremony {
+  max-width: 630px;
+  margin: auto;
+  overflow: hidden;
+  position: relative;
+  background: radial-gradient(circle at 50% 45%, #b99a5e31, transparent 58%), #123127;
+  text-align: center;
+  animation: player-ceremony-enter 0.5s ease-out both;
+}
+.player-ceremony__spotlight {
+  padding: 42px 0 34px;
+  animation: player-ceremony-enter 0.5s ease-out both;
+}
+.player-ceremony__spotlight > span {
+  color: var(--gold-light);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.player-ceremony__spotlight h2 {
+  font-size: clamp(44px, 11vw, 76px);
+  overflow-wrap: anywhere;
+  margin: 12px 0;
+}
+.player-ceremony__spotlight p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.player-ceremony__ticket {
+  border: 1px solid var(--gold);
+  padding: 20px;
+  background: #10291f;
+}
+.player-ceremony__ticket strong {
+  display: block;
+  color: var(--gold-light);
+  font:
+    76px Georgia,
+    serif;
+  line-height: 1.2;
+}
+.player-ceremony__ticket strong small {
+  font:
+    15px "DM Sans",
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+.player-ceremony__ticket p {
+  text-transform: capitalize;
+  color: var(--muted);
+  font-size: 13px;
+}
+.player-ceremony--finale {
+  background:
+    radial-gradient(circle at 50% 42%, #d7ad5866, transparent 55%),
+    conic-gradient(
+      from 10deg at 50% 50%,
+      transparent 0 12deg,
+      #dbbd6e12 12deg 15deg,
+      transparent 15deg 30deg
+    ),
+    #20382b;
+  border-color: var(--gold-light);
+}
+.player-ceremony--finale:before {
+  content: "✦";
+  position: absolute;
+  font:
+    130px Georgia,
+    serif;
+  left: 4%;
+  top: 10%;
+  color: #d5b47b38;
+  pointer-events: none;
+}
+.player-ceremony--finale .player-ceremony__ticket {
+  background: #20372b;
+}
+@keyframes player-ceremony-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-ceremony,
+  .player-ceremony__spotlight {
+    animation: none;
+  }
+}

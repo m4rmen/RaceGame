@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
+import { wagerDetails, wagerTier } from "./DrinkingCeremony";
 import "./Game.css";
 
 const suits = [
@@ -22,6 +23,9 @@ export default function Game() {
   const [cardGrid, setCardGrid] = useState([]);
   const [lastCard, setLastCard] = useState(null);
   const [raceResult, setRaceResult] = useState(null);
+  const [ceremony, setCeremony] = useState(null);
+  const [postCeremony, setPostCeremony] = useState(null);
+  const [postDrinkingDone, setPostDrinkingDone] = useState(false);
   const [distribution, setDistribution] = useState({});
   const [distributionError, setDistributionError] = useState("");
 
@@ -40,6 +44,9 @@ export default function Game() {
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
       setCardGrid(grid);
+      setCeremony(null);
+      setPostCeremony(null);
+      setPostDrinkingDone(false);
     };
     const onWon = (result) => {
       setRaceResult(result);
@@ -52,11 +59,21 @@ export default function Game() {
       setCardGrid(grid);
       setLastCard(null);
       setRaceResult(null);
+      setCeremony(null);
+      setPostCeremony(null);
+      setPostDrinkingDone(false);
       setDistribution({});
       setDistributionError("");
     };
     socket.on("updatePlayers", onPlayers);
     socket.on("startGame", onStart);
+    socket.on("drinkingCeremony", setCeremony);
+    socket.on("postDrinkingCeremony", setPostCeremony);
+    const onPostComplete = () => {
+      setPostCeremony(null);
+      setPostDrinkingDone(true);
+    };
+    socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
     socket.on("updateGrid", setCardGrid);
     socket.on("gameWon", onWon);
@@ -65,6 +82,9 @@ export default function Game() {
     return () => {
       socket.off("updatePlayers", onPlayers);
       socket.off("startGame", onStart);
+      socket.off("drinkingCeremony", setCeremony);
+      socket.off("postDrinkingCeremony", setPostCeremony);
+      socket.off("postDrinkingComplete", onPostComplete);
       socket.off("cardFlipped", setLastCard);
       socket.off("updateGrid", setCardGrid);
       socket.off("gameWon", onWon);
@@ -109,6 +129,15 @@ export default function Game() {
   const playerName =
     currentPlayer?.username ||
     players.find((player) => player.socketId === socket?.id)?.username;
+  const ceremonyPlayer = ceremony?.players[ceremony.currentIndex];
+  const myCeremonyEntry = ceremony?.players.find(
+    (player) => player.socketId === socket?.id,
+  );
+  const isMyTurn = ceremonyPlayer?.socketId === socket?.id;
+  const activePostPlayer = postCeremony?.players[postCeremony.currentIndex];
+  const myPostEntry = postCeremony?.players.find(
+    (player) => player.socketId === socket?.id,
+  );
 
   return (
     <div className="app-shell player-page">
@@ -117,20 +146,96 @@ export default function Game() {
         <span className="eyebrow">The Ace Race / Your seat at the track</span>
         <h1 className="page-title">
           {raceResult
-            ? "The result is in."
-            : isGameStarted
-              ? "Eyes on the finish."
-              : "Back your horse."}
+            ? postCeremony
+              ? "The final toast."
+              : "The result is in."
+            : ceremony
+              ? "The wagers are in."
+              : isGameStarted
+                ? "Eyes on the finish."
+                : "Back your horse."}
         </h1>
         <p className="page-intro">
           {raceResult
-            ? "The winning wager pays double. Choose who receives your drinks."
-            : isGameStarted
-              ? "The cards decide the pace. Follow your horse down the course."
-              : "Choose your ace and set your wager before the gates open."}
+            ? postCeremony
+              ? "The host is calling each player for their final tally."
+              : "The winning wager pays double. Choose who receives your drinks."
+            : ceremony
+              ? "The host is calling each player before the race begins."
+              : isGameStarted
+                ? "The cards decide the pace. Follow your horse down the course."
+                : "Choose your ace and set your wager before the gates open."}
         </p>
       </div>
-      {raceResult ? (
+      {postCeremony ? (
+        <section
+          className="player-ceremony player-ceremony--finale club-panel"
+          aria-live="polite"
+        >
+          <span className="eyebrow">
+            The winners' circle · Rider {postCeremony.currentIndex + 1} of{" "}
+            {postCeremony.players.length}
+          </span>
+          <div className="player-ceremony__spotlight" key={activePostPlayer?.socketId}>
+            <span>
+              {activePostPlayer?.socketId === socket?.id
+                ? "Your final toast"
+                : "Now in the spotlight"}
+            </span>
+            <h2>{activePostPlayer?.username}</h2>
+            <p>
+              {activePostPlayer?.socketId === socket?.id
+                ? "Take the drinks given to you, then tell the host you're ready."
+                : "The next name is coming up."}
+            </p>
+          </div>
+          <div className="player-ceremony__ticket">
+            <span className="eyebrow">Your final tally</span>
+            <strong>
+              {myPostEntry?.total || 0}{" "}
+              <small>{myPostEntry?.total === 1 ? "sip" : "sips"}</small>
+            </strong>
+            <p>
+              {myPostEntry?.sources.length
+                ? myPostEntry.sources
+                    .map(({ username, amount }) => `${amount} from ${username}`)
+                    .join(" · ")
+                : "No drinks assigned"}
+            </p>
+          </div>
+        </section>
+      ) : ceremony ? (
+        <section
+          className={`player-ceremony club-panel player-ceremony--${wagerTier(myCeremonyEntry?.total || 0).key}`}
+          aria-live="polite"
+        >
+          <span className="eyebrow">
+            Before the off · Rider {ceremony.currentIndex + 1} of{" "}
+            {ceremony.players.length}
+          </span>
+          <div className="player-ceremony__spotlight" key={ceremonyPlayer?.socketId}>
+            <span>{isMyTurn ? "Your turn in the spotlight" : "Now at the rail"}</span>
+            <h2>{ceremonyPlayer?.username}</h2>
+            <p>
+              {isMyTurn
+                ? "Take your wager, then tell the host you're ready."
+                : "The host will call the next rider shortly."}
+            </p>
+          </div>
+          <div className="player-ceremony__ticket">
+            <span className="eyebrow">Your race ticket</span>
+            <strong>
+              {myCeremonyEntry?.total || 0}{" "}
+              <small>{myCeremonyEntry?.total === 1 ? "sip" : "sips"}</small>
+            </strong>
+            <p>
+              {myCeremonyEntry
+                ? wagerDetails(myCeremonyEntry.bet)
+                : "Waiting for your wager…"}
+            </p>
+          </div>
+        </section>
+      ) : raceResult ? (
         <section className="distribution-panel club-panel">
           <span className="eyebrow">Official race result</span>
           <h2>{raceResult.winner.replace("_ace", "")} wins.</h2>
@@ -141,7 +246,9 @@ export default function Game() {
               </div>
             ) : resultForCurrentPlayer.distributionConfirmed ? (
               <div className="player-notice">
-                Your distribution is confirmed. Waiting for the rest of the field.
+                {postDrinkingDone
+                  ? "The celebration is complete. Waiting for the host to start another race."
+                  : "Your distribution is confirmed. Waiting for the rest of the field."}
               </div>
             ) : (
               <>

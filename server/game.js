@@ -45,6 +45,11 @@ class Game {
   ];
   initDone = false;
   isStarted = false;
+  phase = "lobby";
+  drinkQueue = [];
+  drinkIndex = 0;
+  postDrinkQueue = [];
+  postDrinkIndex = 0;
   gameWon = false;
   winner = null;
   sockets = {};
@@ -77,6 +82,43 @@ class Game {
 
   toggleStart() {
     this.isStarted = !this.isStarted;
+  }
+
+  startDrinkingCeremony() {
+    this.phase = "drinking";
+    this.drinkQueue = this.players.map((player) => player.socketId);
+    this.drinkIndex = 0;
+  }
+
+  confirmDrink(playerId) {
+    if (this.phase !== "drinking" || this.drinkQueue[this.drinkIndex] !== playerId) {
+      return false;
+    }
+    this.drinkIndex += 1;
+    if (this.drinkIndex >= this.drinkQueue.length) {
+      this.phase = "racing";
+    }
+    return true;
+  }
+
+  startPostDrinkingCeremony() {
+    if (this.phase !== "finished") return false;
+    this.phase = "postDrinking";
+    this.postDrinkQueue = this.players.map((player) => player.socketId);
+    this.postDrinkIndex = 0;
+    return true;
+  }
+
+  confirmPostDrink(playerId) {
+    if (
+      this.phase !== "postDrinking" ||
+      this.postDrinkQueue[this.postDrinkIndex] !== playerId
+    ) {
+      return false;
+    }
+    this.postDrinkIndex += 1;
+    if (this.postDrinkIndex >= this.postDrinkQueue.length) this.phase = "complete";
+    return true;
   }
 
   findPositionOfAce(card) {
@@ -189,6 +231,25 @@ class Game {
     if (removedPlayer) {
       delete this.sockets[socketId];
       this.players = this.players.filter((player) => player.socketId !== socketId);
+      const queueIndex = this.drinkQueue.indexOf(socketId);
+      if (queueIndex !== -1) {
+        this.drinkQueue.splice(queueIndex, 1);
+        if (queueIndex < this.drinkIndex) this.drinkIndex -= 1;
+        if (this.phase === "drinking" && this.drinkIndex >= this.drinkQueue.length) {
+          this.phase = "racing";
+        }
+      }
+      const postQueueIndex = this.postDrinkQueue.indexOf(socketId);
+      if (postQueueIndex !== -1) {
+        this.postDrinkQueue.splice(postQueueIndex, 1);
+        if (postQueueIndex < this.postDrinkIndex) this.postDrinkIndex -= 1;
+        if (
+          this.phase === "postDrinking" &&
+          this.postDrinkIndex >= this.postDrinkQueue.length
+        ) {
+          this.phase = "complete";
+        }
+      }
     }
     return removedPlayer;
   }

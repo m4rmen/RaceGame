@@ -6,6 +6,10 @@ const symbols = { clubs: "♣", diamonds: "♦", hearts: "♥", spades: "♠" };
 
 export default function RaceTrack({ grid = [], lastCard }) {
   const totalSteps = Math.max(grid.length - 1, 1);
+  const sideCards = grid
+    .slice(1)
+    .reverse()
+    .map((row) => row[4] || "back_of_card");
   return (
     <section className="race-track" aria-label="Live race positions">
       <div className="race-track__topline">
@@ -22,7 +26,11 @@ export default function RaceTrack({ grid = [], lastCard }) {
         {lastCard && (
           <div className="race-track__draw">
             <span>Last draw</span>
-            <strong>{lastCard.replace("_", " of ")}</strong>
+            <img
+              key={lastCard}
+              src={`/Images/${lastCard}.png`}
+              alt={lastCard.replace("_", " of ")}
+            />
           </div>
         )}
       </div>
@@ -60,6 +68,47 @@ export default function RaceTrack({ grid = [], lastCard }) {
             </div>
           );
         })}
+        <div className="race-track__sidecards" aria-label="Track side cards">
+          <span className="race-track__side-label">
+            SIDE
+            <br />
+            CARDS
+          </span>
+          <div className="race-track__side-line">
+            {sideCards.map((card, index) => {
+              const revealed = card !== "back_of_card";
+              return (
+                <div className="race-track__side-slot" key={index}>
+                  <span className="race-track__link-number">{index + 1}</span>
+                  <div
+                    className={`race-track__side-card ${revealed ? "is-revealed" : ""}`}
+                    aria-label={
+                      revealed
+                        ? `Link ${index + 1}: ${card.replace("_", " of ")}`
+                        : `Link ${index + 1}: face down`
+                    }
+                  >
+                    <div className="race-track__side-card-inner">
+                      <img
+                        className="race-track__side-back"
+                        src="/Images/back_of_card.png"
+                        alt=""
+                      />
+                      <img
+                        className="race-track__side-front"
+                        src={`/Images/${card}.png`}
+                        alt=""
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <span className="race-track__side-end" aria-hidden="true">
+            ↗
+          </span>
+        </div>
       </div>
       <div className="race-track__foot">
         <span>FOUR HORSES</span>
