@@ -13,6 +13,48 @@ jest.mock("./SocketContext", () => ({
   useSocket: jest.fn(),
 }));
 
+test("the host can retry room creation and get an invite after a connection error", () => {
+  sessionStorage.clear();
+  window.history.replaceState(null, "", "/host");
+  const canvas = jest
+    .spyOn(HTMLCanvasElement.prototype, "getContext")
+    .mockReturnValue(null);
+  try {
+    const listeners = new Map();
+    const socket = {
+      connected: false,
+      on: (event, listener) => listeners.set(event, listener),
+      off: (event) => listeners.delete(event),
+      connect: jest.fn(),
+      timeout: () => socket,
+      emit: jest.fn((event, code, callback) => {
+        if (event === "createRoom") callback(null, { success: true });
+        if (event === "getPlayers") callback([]);
+      }),
+    };
+    useSocket.mockReturnValue(socket);
+
+    render(<App />);
+    expect(screen.getByRole("status")).toHaveTextContent("Connecting");
+    expect(socket.emit).not.toHaveBeenCalled();
+
+    act(() => listeners.get("connect_error")());
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not connect");
+    fireEvent.click(screen.getByRole("button", { name: "Retry connection" }));
+    expect(socket.connect).toHaveBeenCalledTimes(2);
+
+    socket.connected = true;
+    act(() => listeners.get("connect")());
+    const code = socket.emit.mock.calls[0][1];
+    expect(screen.getByRole("link", { name: "Open invite link" })).toHaveAttribute(
+      "href",
+      `${window.location.origin}/waitingroom/${code}`,
+    );
+  } finally {
+    canvas.mockRestore();
+  }
+});
+
 test("a new player can open a room invite and join with only their name", async () => {
   sessionStorage.clear();
   window.history.replaceState(null, "", "/waitingroom/3975");

@@ -2,10 +2,10 @@ const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const test = require("node:test");
 const { io } = require("socket.io-client");
-const { server, ready, gameStore } = require("./app");
+const { server, ensureReady, gameStore } = require("./app");
 
 test("a host and player can resume a shared room after reconnecting", async () => {
-  await ready;
+  await ensureReady();
   await new Promise((resolve) => server.listen(0, resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   const hostId = randomUUID();

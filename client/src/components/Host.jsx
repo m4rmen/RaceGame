@@ -10,29 +10,53 @@ export default function Host() {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [players, setPlayers] = useState([]);
+  const [roomError, setRoomError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
     if (!socket) return;
-    const storedCode =
-      sessionStorage.getItem("raceRole") === "host"
-        ? sessionStorage.getItem("currentRoomId")
-        : null;
+    let active = true;
+    const onConnectionError = () => {
+      setRoomError("Could not connect to the game server.");
+    };
     const create = (roomCode, attempts = 0) => {
-      socket.emit("createRoom", roomCode, (response) => {
-        if (!response.success && attempts < 10) {
+      socket.timeout(8000).emit("createRoom", roomCode, (error, response) => {
+        if (!active) return;
+        if (error) {
+          setRoomError("The game server took too long to create the room.");
+          return;
+        }
+        if (response.code === "ROOM_CODE_TAKEN" && attempts < 10) {
           create(String(Math.floor(1000 + Math.random() * 9000)), attempts + 1);
           return;
         }
-        if (!response.success) return;
+        if (!response.success) {
+          setRoomError(response.message || "Could not create a room.");
+          return;
+        }
         setCode(roomCode);
         sessionStorage.setItem("currentRoomId", roomCode);
         sessionStorage.setItem("raceRole", "host");
         socket.emit("getPlayers", roomCode, (inRoom) => setPlayers(inRoom || []));
       });
     };
-    const resume = () => {
-      const roomCode = sessionStorage.getItem("currentRoomId");
-      if (!roomCode || sessionStorage.getItem("raceRole") !== "host") return;
-      socket.emit("resumeRoom", roomCode, (response) => {
+    const openRoom = () => {
+      setRoomError("");
+      const roomCode =
+        sessionStorage.getItem("raceRole") === "host"
+          ? sessionStorage.getItem("currentRoomId")
+          : null;
+      if (!roomCode) {
+        create(String(Math.floor(1000 + Math.random() * 9000)));
+        return;
+      }
+      socket.timeout(8000).emit("resumeRoom", roomCode, (error, response) => {
+        if (!active) return;
+        if (error || response.message) {
+          setRoomError(
+            response?.message || "The game server took too long to respond.",
+          );
+          return;
+        }
         if (response.success) {
           setCode(roomCode);
           setPlayers(response.state.players);
@@ -40,17 +64,19 @@ export default function Host() {
         } else create(roomCode);
       });
     };
-    socket.on("connect", resume);
-    if (storedCode) {
-      if (socket.connected) resume();
-    } else create(String(Math.floor(1000 + Math.random() * 9000)));
     const onPlayers = (updated) => setPlayers(updated);
+    socket.on("connect", openRoom);
+    socket.on("connect_error", onConnectionError);
     socket.on("updatePlayers", onPlayers);
+    if (socket.connected) openRoom();
+    else socket.connect();
     return () => {
-      socket.off("connect", resume);
+      active = false;
+      socket.off("connect", openRoom);
+      socket.off("connect_error", onConnectionError);
       socket.off("updatePlayers", onPlayers);
     };
-  }, [socket, navigate]);
+  }, [socket, navigate, retry]);
   const inviteUrl = code
     ? new URL(`/waitingroom/${code}`, window.location.origin).href
     : "";
@@ -69,6 +95,25 @@ export default function Host() {
         <div className="staging-code club-panel">
           <span className="eyebrow">Your race code</span>
           <strong>{code || "····"}</strong>
+          {roomError ? (
+            <div>
+              <p className="form-error" role="alert">
+                {roomError}
+              </p>
+              <button
+                className="club-button"
+                type="button"
+                onClick={() => {
+                  setRoomError("");
+                  setRetry((attempt) => attempt + 1);
+                }}
+              >
+                Retry connection
+              </button>
+            </div>
+          ) : (
+            !code && <small role="status">Connecting to the game server…</small>
+          )}
           {inviteUrl && (
             <div className="host-invite">
               <QRCodeCanvas
