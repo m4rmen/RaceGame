@@ -131,6 +131,10 @@ const GameHost = () => {
             {raceResult && (
                 <section className="host-results">
                     <h2>{raceResult.winner.replace("_ace", "")} won the race</h2>
+                    <div className="distribution-legend" aria-label="Distribution status legend">
+                        <span><i className="legend-color legend-pending" /> Orange: distributing</span>
+                        <span><i className="legend-color legend-complete" /> Green: confirmed</span>
+                    </div>
                     <table>
                         <thead>
                             <tr>
@@ -143,7 +147,10 @@ const GameHost = () => {
                         </thead>
                         <tbody>
                             {raceResult.players.map((player) => (
-                                <tr key={player.socketId}>
+                                <tr
+                                    className={player.distributionConfirmed ? "distribution-complete" : "distribution-pending"}
+                                    key={player.socketId}
+                                >
                                     <td>{player.username}</td>
                                     <td>{formatBets(player.bet)}</td>
                                     <td>{player.drinkAllowance}</td>

@@ -90,16 +90,16 @@ const Game = () => {
     const remainingDrinks = (resultForCurrentPlayer?.drinkAllowance || 0) - distributedTotal;
 
     const changeDistribution = (recipientId, change) => {
-        setDistribution((current) => {
-            const currentAmount = current[recipientId] || 0;
-            const currentTotal = Object.values(current).reduce((total, amount) => total + amount, 0);
-            if (change > 0 && currentTotal >= resultForCurrentPlayer.drinkAllowance) return current;
+        const currentAmount = distribution[recipientId] || 0;
+        const currentTotal = Object.values(distribution).reduce((total, amount) => total + amount, 0);
+        if (change > 0 && currentTotal >= resultForCurrentPlayer.drinkAllowance) return;
 
-            return {
-                ...current,
-                [recipientId]: Math.max(0, currentAmount + change)
-            };
-        });
+        const updatedDistribution = {
+            ...distribution,
+            [recipientId]: Math.max(0, currentAmount + change)
+        };
+        setDistribution(updatedDistribution);
+        socket.emit("updateDistribution", roomId, updatedDistribution);
         setDistributionError("");
     };
 

@@ -167,6 +167,31 @@ io.on("connection", (socket) => {
     callback(currentPlayer.bet);
   })
 
+  socket.on("updateDistribution", (roomId, requestedDistributions) => {
+    const currentGame = getGameById(roomId);
+    const currentPlayer = currentGame?.players.find((player) => player.socketId === socket.id);
+    if (!currentGame?.gameWon || !currentPlayer || currentPlayer.distributionConfirmed) return;
+
+    const validRecipients = new Set(
+      currentGame.players
+        .filter((player) => player.socketId !== socket.id)
+        .map((player) => player.socketId)
+    );
+    const distributions = {};
+
+    for (const [recipientId, rawAmount] of Object.entries(requestedDistributions || {})) {
+      const amount = Number(rawAmount);
+      if (!validRecipients.has(recipientId) || !Number.isInteger(amount) || amount < 0) return;
+      if (amount > 0) distributions[recipientId] = amount;
+    }
+
+    const distributedTotal = Object.values(distributions).reduce((total, amount) => total + amount, 0);
+    if (distributedTotal > getDrinkAllowance(currentGame, currentPlayer)) return;
+
+    currentPlayer.distributions = distributions;
+    io.to(roomId).emit("distributionUpdate", getEndGameState(currentGame));
+  });
+
   socket.on("submitDistribution", (roomId, requestedDistributions, callback = () => {}) => {
     const currentGame = getGameById(roomId);
     const currentPlayer = currentGame?.players.find((player) => player.socketId === socket.id);
