@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Server",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/server/index.js",
+      "cwd": "${workspaceFolder}/server",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Client",
+      "runtimeExecutable": "npm.cmd",
+      "runtimeArgs": ["start"],
+      "cwd": "${workspaceFolder}/client",
+      "console": "integratedTerminal",
+      "env": {
+        "BROWSER": "none"
+      }
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Open three client tabs",
+      "program": "${workspaceFolder}/.vscode/open-client-tabs.cjs",
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Client and Server (3 tabs)",
+      "configurations": ["Server", "Client", "Open three client tabs"],
+      "stopAll": true
+    }
+  ]
+}

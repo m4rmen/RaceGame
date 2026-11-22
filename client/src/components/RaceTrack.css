@@ -1,0 +1,230 @@
+.race-track {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--gold);
+  background:
+    radial-gradient(circle at 65% 20%, rgba(173, 147, 83, 0.12), transparent 36%),
+    repeating-linear-gradient(
+      25deg,
+      transparent 0 4px,
+      rgba(255, 255, 255, 0.012) 5px 6px
+    ),
+    #102c25;
+  box-shadow:
+    0 24px 60px #06171066,
+    inset 0 0 0 7px #102c25,
+    inset 0 0 0 8px #ab936078;
+  padding: clamp(20px, 3vw, 42px);
+}
+.race-track__topline,
+.race-track__foot,
+.race-track__scale {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+.race-track__live {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.race-track__live span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #cfab66;
+  box-shadow: 0 0 12px #e4c577;
+  animation: race-pulse 2s infinite;
+}
+.race-track__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 15px;
+  padding: 16px 0 22px;
+  border-bottom: 1px solid #c6ad7655;
+}
+.race-track__heading h2 {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 55px);
+  line-height: 1;
+}
+.race-track__heading p {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.race-track__draw {
+  text-align: right;
+  text-transform: capitalize;
+}
+.race-track__draw span {
+  display: block;
+  color: var(--gold-light);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.race-track__draw strong {
+  font:
+    22px Georgia,
+    serif;
+  color: var(--cream);
+}
+.race-track__course {
+  padding: 24px 0 18px;
+}
+.race-track__scale {
+  padding: 0 32px 15px 118px;
+  font-size: 9px;
+}
+.race-lane {
+  display: grid;
+  grid-template-columns: 102px minmax(0, 1fr) 45px;
+  align-items: center;
+  gap: 16px;
+  min-height: clamp(80px, 8vw, 116px);
+  border-top: 1px solid #d7c69a2e;
+}
+.race-lane:last-child {
+  border-bottom: 1px solid #d7c69a2e;
+}
+.race-lane__name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+.race-lane__symbol {
+  font:
+    30px Georgia,
+    serif;
+  color: var(--gold-light);
+}
+.race-lane--hearts .race-lane__symbol,
+.race-lane--diamonds .race-lane__symbol {
+  color: #da9a82;
+}
+.race-lane__rail {
+  height: 65px;
+  position: relative;
+  margin-right: 22px;
+}
+.race-lane__rail:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: linear-gradient(90deg, #a48b57, #d9c18b);
+}
+.race-lane__rail:after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 4px;
+  bottom: 4px;
+  border-right: 3px double var(--gold-light);
+}
+.race-lane__ticks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.race-lane__ticks i {
+  height: 15px;
+  border-left: 1px solid #b9a27083;
+}
+.race-lane__runner {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: left 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.race-lane__runner img {
+  display: block;
+  width: 39px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 4px 18px #0008;
+  border: 2px solid #eadbb8;
+}
+.race-lane__distance {
+  font:
+    20px Georgia,
+    serif;
+  color: var(--cream);
+  text-align: right;
+}
+.race-track__foot {
+  border-top: 1px solid #c6ad7655;
+  padding-top: 17px;
+  font-size: 9px;
+}
+@keyframes race-pulse {
+  50% {
+    opacity: 0.35;
+    box-shadow: 0 0 3px #e4c577;
+  }
+}
+@media (max-width: 620px) {
+  .race-track {
+    padding: 18px 15px;
+  }
+  .race-track__heading {
+    align-items: start;
+  }
+  .race-track__draw strong {
+    font-size: 16px;
+  }
+  .race-track__scale {
+    padding-left: 72px;
+    padding-right: 0;
+  }
+  .race-lane {
+    grid-template-columns: 62px minmax(0, 1fr) 31px;
+    gap: 8px;
+    min-height: 74px;
+  }
+  .race-lane__name {
+    display: grid;
+    justify-items: center;
+    gap: 0;
+    font-size: 9px;
+  }
+  .race-lane__symbol {
+    font-size: 22px;
+  }
+  .race-lane__rail {
+    margin-right: 12px;
+  }
+  .race-lane__runner img {
+    width: 28px;
+    height: 42px;
+  }
+  .race-lane__distance {
+    font-size: 15px;
+  }
+  .race-track__foot span:nth-child(2) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .race-lane__runner,
+  .race-track__live span {
+    transition: none;
+    animation: none;
+  }
+}
