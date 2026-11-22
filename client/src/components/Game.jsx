@@ -11,6 +11,9 @@ const Game = () => {
     const [players, setPlayers] = useState([]);
     const [currentPlayer, setCurrentPlayer] = useState(null);
     const [betConfirmed, setBetConfirmed] = useState(false);
+    const [isGameStarted, setIsGameStarted] = useState(false);
+    const [cardGrid, setCardGrid] = useState([]);
+    const [lastCard, setLastCard] = useState(null);
 
     useEffect(() => {
         socket.emit("getPlayers", roomId, (playersInRoom) => {
@@ -24,6 +27,20 @@ const Game = () => {
             setPlayers(updatedPlayers);
             setCurrentPlayer(updatedPlayers.find(player => player.socketId === socket.id));
         });
+
+        socket.on("startGame", ({ grid }) => {
+            setIsGameStarted(true);
+            setCardGrid(grid);
+        });
+        socket.on("cardFlipped", setLastCard);
+        socket.on("updateGrid", setCardGrid);
+
+        return () => {
+            socket.off("updatePlayers");
+            socket.off("startGame");
+            socket.off("cardFlipped");
+            socket.off("updateGrid");
+        };
     }, [socket, roomId]);
 
 
@@ -113,6 +130,24 @@ const Game = () => {
                 <button onClick={handleConfirmBets}>Confirm Bets</button>
                 </div>
             }
+
+            {isGameStarted && (
+                <div>
+                    <h2>The race is on!</h2>
+                    {lastCard && <p>Last card: {lastCard.replace("_", " of ")}</p>}
+                    <div className="card-container">
+                        {cardGrid.map((row, rowIndex) => (
+                            <div key={rowIndex} className="card-row">
+                                {row.map((card, colIndex) => (
+                                    <div key={colIndex} className="card">
+                                        {card && <img src={`/Images/${card}.png`} alt={card} />}
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
 
         </div>

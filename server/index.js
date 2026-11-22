@@ -100,25 +100,22 @@ io.on("connection", (socket) => {
     const currentPlayer = currentGame.players.find((player)=>player.socketId === socket.id);
     currentPlayer.betConfirmed = true;
 
-    socket.to(currentGame.organizerId).emit("updatePlayers", currentGame.players); 
+    io.to(roomId).emit("updatePlayers", currentGame.players);
 
-    let count = 0;
-    console.log("Current Game players : ", currentGame.players)
-
-    currentGame.players.forEach((player) => {
-      if(Object.keys(player.bet).length){
-        count +=1;
-      }
-    });
-    if(count === currentGame.players.length){
-      console.log("count: ",count)
-      io.to(roomId).emit("startGame");
-      console.log("start game")
+    if (currentGame.players.length > 0 && currentGame.players.every((player) => player.betConfirmed)) {
+      io.to(roomId).emit("startGame", {
+        grid: currentGame.grid,
+        positions: currentGame.positions
+      });
+      console.log("Game started:", roomId);
     }
   })
 
   socket.on("flipCard", (roomId)=>{
     const currentGame = getGameById(roomId);
+    if (!currentGame || !currentGame.isStarted || currentGame.organizerId !== socket.id || currentGame.gameWon) {
+      return;
+    }
     const card = currentGame.flipCard();
     setTimeout(() => {
       io.to(roomId).emit("cardFlipped", card);

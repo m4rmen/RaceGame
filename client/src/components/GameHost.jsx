@@ -8,6 +8,8 @@ const GameHost = () => {
     const socket = useSocket();
     const [players, setPlayers] = useState([]);
     const [isGameStarted, setIsGameStarted] = useState(false);
+    const [lastCard, setLastCard] = useState(null);
+    const [positions, setPositions] = useState({});
     const [cardGrid, setCardGrid] = useState([
         ['','','','',''],
         ['back_of_card','','','',''],
@@ -30,9 +32,23 @@ const GameHost = () => {
             setPlayers(updatedPlayers);
         });
 
-        socket.on("startGame", () => {
+        socket.on("startGame", ({ grid, positions }) => {
             setIsGameStarted(true);
+            setCardGrid(grid);
+            setPositions(positions);
         });
+
+        socket.on("cardFlipped", setLastCard);
+        socket.on("updateGrid", setCardGrid);
+        socket.on("updatePosition", setPositions);
+
+        return () => {
+            socket.off("updatePlayers");
+            socket.off("startGame");
+            socket.off("cardFlipped");
+            socket.off("updateGrid");
+            socket.off("updatePosition");
+        };
 
 
     }, [socket, roomId]);
@@ -61,6 +77,13 @@ const GameHost = () => {
                 <p>No other players in the room</p>
             )}
             {!isGameStarted && (<h3>Waiting for players to confirm their bets...</h3>)}
+            {isGameStarted && (
+                <>
+                    <button onClick={() => socket.emit("flipCard", roomId)}>Flip next card</button>
+                    {lastCard && <p>Last card: {lastCard.replace("_", " of ")}</p>}
+                    <p>{Object.entries(positions).map(([horse, place]) => `${horse.replace("_ace", "")}: ${place}`).join(" | ")}</p>
+                </>
+            )}
 
             <div className="card-container">
                 {cardGrid.map((row, rowIndex) => (
