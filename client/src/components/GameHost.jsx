@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
+import DrinkingCeremony from "./DrinkingCeremony";
 import "./GameHost.css";
 
 const initialGrid = [
@@ -24,6 +25,11 @@ export default function GameHost() {
   const [lastCard, setLastCard] = useState(null);
   const [cardGrid, setCardGrid] = useState(initialGrid);
   const [raceResult, setRaceResult] = useState(null);
+  const [ceremony, setCeremony] = useState(null);
+  const [postCeremony, setPostCeremony] = useState(null);
+  const [postDrinkingDone, setPostDrinkingDone] = useState(false);
+  const [confirmingDrink, setConfirmingDrink] = useState(false);
+  const [ceremonyError, setCeremonyError] = useState("");
   const [replayError, setReplayError] = useState("");
 
   useEffect(() => {
@@ -32,6 +38,23 @@ export default function GameHost() {
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
       setCardGrid(grid);
+      setCeremony(null);
+      setConfirmingDrink(false);
+    };
+    const onCeremony = (state) => {
+      setCeremony(state);
+      setConfirmingDrink(false);
+      setCeremonyError("");
+    };
+    const onPostCeremony = (state) => {
+      setPostCeremony(state);
+      setConfirmingDrink(false);
+      setCeremonyError("");
+    };
+    const onPostComplete = () => {
+      setPostCeremony(null);
+      setPostDrinkingDone(true);
+      setConfirmingDrink(false);
     };
     const onNewGame = ({ players: nextPlayers, grid }) => {
       setPlayers(nextPlayers);
@@ -39,10 +62,16 @@ export default function GameHost() {
       setLastCard(null);
       setCardGrid(grid);
       setRaceResult(null);
+      setCeremony(null);
+      setPostCeremony(null);
+      setPostDrinkingDone(false);
       setReplayError("");
     };
     socket.on("updatePlayers", setPlayers);
     socket.on("startGame", onStart);
+    socket.on("drinkingCeremony", onCeremony);
+    socket.on("postDrinkingCeremony", onPostCeremony);
+    socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
     socket.on("updateGrid", setCardGrid);
     socket.on("gameWon", setRaceResult);
@@ -51,6 +80,9 @@ export default function GameHost() {
     return () => {
       socket.off("updatePlayers", setPlayers);
       socket.off("startGame", onStart);
+      socket.off("drinkingCeremony", onCeremony);
+      socket.off("postDrinkingCeremony", onPostCeremony);
+      socket.off("postDrinkingComplete", onPostComplete);
       socket.off("cardFlipped", setLastCard);
       socket.off("updateGrid", setCardGrid);
       socket.off("gameWon", setRaceResult);
@@ -75,6 +107,24 @@ export default function GameHost() {
       if (!response.success) setReplayError(response.message);
     });
   const confirmedCount = players.filter((player) => player.betConfirmed).length;
+  const confirmDrink = (playerId) => {
+    setConfirmingDrink(true);
+    socket.emit("confirmDrink", roomId, playerId, (response) => {
+      if (!response.success) {
+        setCeremonyError(response.message);
+        setConfirmingDrink(false);
+      }
+    });
+  };
+  const confirmPostDrink = (playerId) => {
+    setConfirmingDrink(true);
+    socket.emit("confirmPostDrink", roomId, playerId, (response) => {
+      if (!response.success) {
+        setCeremonyError(response.message);
+        setConfirmingDrink(false);
+      }
+    });
+  };
 
   return (
     <div className="app-shell host-page">
@@ -83,9 +133,27 @@ export default function GameHost() {
         <div>
           <span className="eyebrow">The Ace Race / Live event</span>
           <h1 className="page-title">
-            The race is <em>on.</em>
+            {postCeremony ? (
+              <>
+                The final <em>toast.</em>
+              </>
+            ) : ceremony ? (
+              <>
+                Wagers <em>on the line.</em>
+              </>
+            ) : (
+              <>
+                The race is <em>on.</em>
+              </>
+            )}
           </h1>
-          <p className="page-intro">Four suits. Seven lengths. One victorious ace.</p>
+          <p className="page-intro">
+            {postCeremony
+              ? "The finish is settled. Now every rider gets their moment."
+              : ceremony
+                ? "Every rider takes their wager before the gates open."
+                : "Four suits. Seven lengths. One victorious ace."}
+          </p>
         </div>
         <div className="host-page__badge">
           <span>RACE NO.</span>
@@ -93,7 +161,22 @@ export default function GameHost() {
           <span>THE CLUB COURSE</span>
         </div>
       </div>
-      {raceResult ? (
+      {postCeremony ? (
+        <DrinkingCeremony
+          ceremony={postCeremony}
+          onConfirm={confirmPostDrink}
+          confirming={confirmingDrink}
+          error={ceremonyError}
+          finale
+        />
+      ) : ceremony ? (
+        <DrinkingCeremony
+          ceremony={ceremony}
+          onConfirm={confirmDrink}
+          confirming={confirmingDrink}
+          error={ceremonyError}
+        />
+      ) : raceResult ? (
         <section className="host-results club-panel">
           <div className="section-heading">
             <div>
@@ -152,7 +235,7 @@ export default function GameHost() {
             </table>
           </div>
           <div className="host-results__footer">
-            {raceResult.allDistributed ? (
+            {postDrinkingDone ? (
               <button className="club-button" onClick={handleReplay}>
                 Run another race <span aria-hidden="true">↗</span>
               </button>

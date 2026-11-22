@@ -57,6 +57,61 @@ function getEndGameState(game) {
   };
 }
 
+function getDrinkingState(game) {
+  return {
+    players: game.drinkQueue.map((socketId) => {
+      const player = game.players.find((entry) => entry.socketId === socketId);
+      return {
+        socketId: player.socketId,
+        username: player.username,
+        bet: { ...player.bet },
+        total: Object.values(player.bet).reduce((sum, amount) => sum + amount, 0),
+      };
+    }),
+    currentIndex: game.drinkIndex,
+  };
+}
+
+function broadcastRaceStart(game) {
+  io.to(game.gameId).emit("startGame", {
+    grid: game.grid,
+    positions: game.positions,
+  });
+  console.log("Game started:", game.gameId);
+}
+
+function getPostDrinkingState(game) {
+  return {
+    players: game.postDrinkQueue.map((socketId) => {
+      const player = game.players.find((entry) => entry.socketId === socketId);
+      const sources = game.players
+        .map((giver) => ({
+          username: giver.username,
+          amount: giver.distributions[socketId] || 0,
+        }))
+        .filter((giver) => giver.amount > 0);
+      return {
+        socketId,
+        username: player.username,
+        total: sources.reduce((sum, giver) => sum + giver.amount, 0),
+        sources,
+      };
+    }),
+    currentIndex: game.postDrinkIndex,
+  };
+}
+
+function startPostDrinkingIfReady(game) {
+  if (getEndGameState(game).allDistributed && game.startPostDrinkingCeremony()) {
+    if (game.postDrinkQueue.length === 0) {
+      game.phase = "complete";
+      io.to(game.gameId).emit("postDrinkingComplete");
+    } else {
+      io.to(game.gameId).emit("postDrinkingCeremony", getPostDrinkingState(game));
+    }
+  }
+}
+
 io.on("connection", (socket) => {
   console.log("New client connected:", socket.id);
 
@@ -121,25 +176,36 @@ io.on("connection", (socket) => {
   });
 
   socket.on("startBettingPhase", (roomId) => {
-    socket.to(roomId).emit("bettingPhase");
     const currentGame = getGameById(roomId);
-    currentGame.toggleStart();
+    if (
+      !currentGame ||
+      currentGame.organizerId !== socket.id ||
+      currentGame.phase !== "lobby"
+    )
+      return;
+    currentGame.isStarted = true;
+    currentGame.phase = "betting";
+    socket.to(roomId).emit("bettingPhase");
   });
 
   socket.on("playerBetChange", (bet, roomId) => {
     const currentGame = getGameById(roomId);
+    if (currentGame?.phase !== "betting") return;
     const currentPlayer = currentGame.players.find(
       (player) => player.socketId === socket.id,
     );
+    if (!currentPlayer || currentPlayer.betConfirmed) return;
     currentPlayer.bet = bet;
     socket.to(roomId).emit("updatePlayers", currentGame.players);
   });
 
   socket.on("betsPlaced", (roomId) => {
     const currentGame = getGameById(roomId);
+    if (currentGame?.phase !== "betting") return;
     const currentPlayer = currentGame.players.find(
       (player) => player.socketId === socket.id,
     );
+    if (!currentPlayer || currentPlayer.betConfirmed) return;
     currentPlayer.betConfirmed = true;
 
     io.to(roomId).emit("updatePlayers", currentGame.players);
@@ -148,19 +214,53 @@ io.on("connection", (socket) => {
       currentGame.players.length > 0 &&
       currentGame.players.every((player) => player.betConfirmed)
     ) {
-      io.to(roomId).emit("startGame", {
-        grid: currentGame.grid,
-        positions: currentGame.positions,
-      });
-      console.log("Game started:", roomId);
+      currentGame.startDrinkingCeremony();
+      io.to(roomId).emit("drinkingCeremony", getDrinkingState(currentGame));
     }
+  });
+
+  socket.on("confirmDrink", (roomId, playerId, callback = () => {}) => {
+    const currentGame = getGameById(roomId);
+    if (
+      !currentGame ||
+      currentGame.organizerId !== socket.id ||
+      !currentGame.confirmDrink(playerId)
+    ) {
+      callback({ success: false, message: "That player is not up next." });
+      return;
+    }
+
+    if (currentGame.phase === "racing") {
+      broadcastRaceStart(currentGame);
+    } else {
+      io.to(roomId).emit("drinkingCeremony", getDrinkingState(currentGame));
+    }
+    callback({ success: true });
+  });
+
+  socket.on("confirmPostDrink", (roomId, playerId, callback = () => {}) => {
+    const currentGame = getGameById(roomId);
+    if (
+      !currentGame ||
+      currentGame.organizerId !== socket.id ||
+      !currentGame.confirmPostDrink(playerId)
+    ) {
+      callback({ success: false, message: "That player is not up next." });
+      return;
+    }
+    if (currentGame.phase === "complete") {
+      io.to(roomId).emit("postDrinkingComplete");
+    } else {
+      io.to(roomId).emit("postDrinkingCeremony", getPostDrinkingState(currentGame));
+    }
+    callback({ success: true });
   });
 
   socket.on("flipCard", (roomId) => {
     const currentGame = getGameById(roomId);
     if (
       !currentGame ||
-      !currentGame.isStarted ||
+      currentGame.phase !== "racing" ||
       currentGame.organizerId !== socket.id ||
       currentGame.gameWon
     ) {
@@ -171,10 +271,12 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("cardFlipped", card);
       io.to(roomId).emit("updateGrid", currentGame.grid);
       if (currentGame.gameWon) {
+        currentGame.phase = "finished";
         currentGame.players.forEach((player) => {
           player.distributionConfirmed = getDrinkAllowance(currentGame, player) === 0;
         });
         io.to(roomId).emit("gameWon", getEndGameState(currentGame));
+        startPostDrinkingIfReady(currentGame);
       }
       io.to(roomId).emit("updatePosition", currentGame.positions);
     }, 100);
@@ -283,17 +385,14 @@ io.on("connection", (socket) => {
       currentPlayer.distributionConfirmed = true;
       const endGameState = getEndGameState(currentGame);
       io.to(roomId).emit("distributionUpdate", endGameState);
+      startPostDrinkingIfReady(currentGame);
       callback({ success: true });
     },
   );
 
   socket.on("playAgain", (roomId, callback = () => {}) => {
     const oldGame = getGameById(roomId);
-    if (
-      !oldGame ||
-      oldGame.organizerId !== socket.id ||
-      !getEndGameState(oldGame).allDistributed
-    ) {
+    if (!oldGame || oldGame.organizerId !== socket.id || oldGame.phase !== "complete") {
       callback({ success: false, message: "Replay is not available yet." });
       return;
     }
@@ -306,6 +405,7 @@ io.on("connection", (socket) => {
       newGame.sockets[player.socketId] = player;
     }
     newGame.isStarted = true;
+    newGame.phase = "betting";
     games[games.indexOf(oldGame)] = newGame;
     io.to(roomId).emit("newGame", {
       players: newGame.players,
@@ -321,8 +421,20 @@ io.on("connection", (socket) => {
         games.splice(games.indexOf(game), 1);
         socket.to(game.gameId).emit("roomDeleted");
       } else {
+        const previousPhase = game.phase;
         game.removePlayer(socket.id);
         socket.to(game.gameId).emit("updatePlayers", game.players);
+        if (previousPhase === "drinking") {
+          if (game.phase === "racing") broadcastRaceStart(game);
+          else io.to(game.gameId).emit("drinkingCeremony", getDrinkingState(game));
+        } else if (previousPhase === "postDrinking") {
+          if (game.phase === "complete")
+            io.to(game.gameId).emit("postDrinkingComplete");
+          else
+            io.to(game.gameId).emit("postDrinkingCeremony", getPostDrinkingState(game));
+        } else if (previousPhase === "finished") {
+          startPostDrinkingIfReady(game);
+        }
         console.log("Player disconnected: ", socket.id);
       }
     });
