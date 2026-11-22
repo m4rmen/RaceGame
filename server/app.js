@@ -446,12 +446,24 @@ io.on("connection", (socket) => {
     callback({ success: true });
   });
 
-  on(socket, "flipCard", async (roomId) => {
+  on(socket, "flipCard", async (roomId, callback = () => {}) => {
     const result = await gameStore.update(roomId, (game) => {
-      if (game.organizerId !== playerId || game.phase !== "racing" || game.gameWon) {
+      if (
+        game.organizerId !== playerId ||
+        game.phase !== "racing" ||
+        game.gameWon ||
+        game.sideCardRevealUntil > Date.now()
+      ) {
         return null;
       }
+      const previousSideCards = game.grid.map((row) => row[4]);
       const card = game.flipCard();
+      const sideCard = game.grid.find(
+        (row, index) =>
+          previousSideCards[index] === "back_of_card" && row[4] !== "back_of_card",
+      )?.[4];
+      // Cover clicks already in flight when a side card is revealed.
+      if (sideCard) game.sideCardRevealUntil = Date.now() + 3000;
       game.lastCard = card;
       if (game.gameWon) {
         game.phase = "finished";
@@ -463,19 +475,24 @@ io.on("connection", (socket) => {
       const nextEvent = game.gameWon ? advancePostDrinkingIfReady(game) : null;
       return {
         card,
+        sideCard,
         grid: game.grid,
         positions: game.positions,
         raceResult,
         nextEvent,
       };
     });
-    if (!result) return;
+    if (!result) {
+      callback({ success: false });
+      return;
+    }
     io.to(roomId).emit("cardFlipped", result.card);
-    io.to(roomId).emit("updateGrid", result.grid);
+    io.to(roomId).emit("updateGrid", result.grid, result.sideCard ?? null);
     if (result.raceResult) io.to(roomId).emit("gameWon", result.raceResult);
     if (result.nextEvent)
       io.to(roomId).emit(result.nextEvent.name, result.nextEvent.data);
     io.to(roomId).emit("updatePosition", result.positions);
+    callback({ success: true });
   });
 
   on(socket, "getPlayerBet", async (roomId, callback) => {

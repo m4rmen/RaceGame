@@ -26,6 +26,8 @@ export default function Game() {
   const [lastCard, setLastCard] = useState(null);
   const [raceResult, setRaceResult] = useState(null);
   const [revealedWinner, setRevealedWinner] = useState(null);
+  const [sideCard, setSideCard] = useState(null);
+  const finishSideCardReveal = useCallback(() => setSideCard(null), []);
   const finishWinnerReveal = useCallback(() => setRevealedWinner(null), []);
   const [ceremony, setCeremony] = useState(null);
   const [postCeremony, setPostCeremony] = useState(null);
@@ -47,6 +49,7 @@ export default function Game() {
         ["racing", "finished", "postDrinking", "complete"].includes(state.phase),
       );
       setCardGrid(state.grid);
+      setSideCard(null);
       setLastCard(state.lastCard);
       setCeremony(state.ceremony);
       setPostCeremony(state.postCeremony);
@@ -98,6 +101,7 @@ export default function Game() {
       setIsGameStarted(false);
       setCardGrid(grid);
       setLastCard(null);
+      setSideCard(null);
       setRaceResult(null);
       setRevealedWinner(null);
       setCeremony(null);
@@ -116,7 +120,11 @@ export default function Game() {
     };
     socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
-    socket.on("updateGrid", setCardGrid);
+    const onGrid = (grid, revealedSideCard = null) => {
+      setCardGrid(grid);
+      setSideCard(revealedSideCard);
+    };
+    socket.on("updateGrid", onGrid);
     socket.on("gameWon", onWon);
     socket.on("distributionUpdate", setRaceResult);
     socket.on("newGame", onNewGame);
@@ -145,7 +153,7 @@ export default function Game() {
       socket.off("postDrinkingCeremony", setPostCeremony);
       socket.off("postDrinkingComplete", onPostComplete);
       socket.off("cardFlipped", setLastCard);
-      socket.off("updateGrid", setCardGrid);
+      socket.off("updateGrid", onGrid);
       socket.off("gameWon", onWon);
       socket.off("distributionUpdate", setRaceResult);
       socket.off("newGame", onNewGame);
@@ -380,6 +388,8 @@ export default function Game() {
             grid={cardGrid}
             lastCard={lastCard}
             winner={revealedWinner}
+            sideCard={sideCard}
+            onSideCardEnd={finishSideCardReveal}
             onWinnerRevealEnd={finishWinnerReveal}
           />
         </>
@@ -390,37 +400,45 @@ export default function Game() {
             <h2>Pick your contenders.</h2>
           </div>
           <div className="betting-card-container">
-            {suits.map(({ name, symbol }, index) => (
-              <div className={`betting-card betting-card--${name}`} key={name}>
-                <span className="betting-card__number">
-                  NO. {String(index + 1).padStart(2, "0")}
-                </span>
-                <img src={`/Images/${name}_ace.png`} alt={`${name} ace`} />
-                <div className="betting-card__bottom">
-                  <span>
-                    <i>{symbol}</i>
-                    {name}
+            {suits.map(({ name, symbol }, index) => {
+              const wager = currentPlayer?.bet[name] || 0;
+              return (
+                <div
+                  className={`betting-card betting-card--${name}${wager ? " has-wager" : ""}`}
+                  key={name}
+                >
+                  <span className="betting-card__number">
+                    NO. {String(index + 1).padStart(2, "0")}
                   </span>
-                  <div className="stepper">
-                    <button
-                      aria-label={`Decrease ${name} bet`}
-                      disabled={betConfirmed || !currentPlayer?.bet[name]}
-                      onClick={() => handleBet(-1, name)}
-                    >
-                      −
-                    </button>
-                    <strong>{currentPlayer?.bet[name] || 0}</strong>
-                    <button
-                      aria-label={`Increase ${name} bet`}
-                      disabled={betConfirmed || !currentPlayer}
-                      onClick={() => handleBet(1, name)}
-                    >
-                      +
-                    </button>
+                  <img src={`/Images/${name}_ace.png`} alt={`${name} ace`} />
+                  <div className="betting-card__bottom">
+                    <span>
+                      <i>{symbol}</i>
+                      {name}
+                    </span>
+                    <div className="stepper">
+                      <button
+                        aria-label={`Decrease ${name} bet`}
+                        disabled={betConfirmed || !wager}
+                        onClick={() => handleBet(-1, name)}
+                      >
+                        −
+                      </button>
+                      <strong key={wager} className="betting-card__count">
+                        {wager}
+                      </strong>
+                      <button
+                        aria-label={`Increase ${name} bet`}
+                        disabled={betConfirmed || !currentPlayer}
+                        onClick={() => handleBet(1, name)}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="betting-footer club-panel">
             <div>

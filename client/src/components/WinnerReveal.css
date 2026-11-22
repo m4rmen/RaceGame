@@ -16,6 +16,25 @@
   animation: winner-spotlight 420ms ease-out 700ms both;
 }
 
+.winner-reveal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 6deg,
+    #e8c36e30 0deg 3deg,
+    transparent 3deg 19deg
+  );
+  mask-image: radial-gradient(
+    ellipse at center,
+    transparent 10%,
+    #000 28%,
+    transparent 68%
+  );
+  animation: winner-rays 1.8s ease-out 1.35s both;
+}
+
 .winner-reveal__card {
   position: relative;
   width: clamp(96px, 18vw, 160px);
@@ -36,6 +55,11 @@
 
 .winner-reveal__face {
   transform: rotateY(180deg);
+}
+
+.winner-reveal > .eyebrow,
+.winner-reveal > h2 {
+  position: relative;
 }
 
 .winner-reveal > .eyebrow {
@@ -66,6 +90,20 @@
   }
 }
 
+@keyframes winner-rays {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-10deg);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.28) rotate(8deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .winner-reveal,
   .winner-reveal__card {
@@ -73,5 +111,8 @@
   }
   .winner-reveal__card {
     transform: rotateY(180deg);
+  }
+  .winner-reveal::before {
+    display: none;
   }
 }

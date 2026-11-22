@@ -92,7 +92,13 @@
 }
 .betting-card {
   border: 1px solid var(--line);
-  background: linear-gradient(155deg, #204a3b, #133127);
+  background:
+    radial-gradient(
+      ellipse at top,
+      color-mix(in srgb, var(--suit-accent) 17%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(155deg, #204a3b, #133127);
   padding: 13px;
   min-width: 0;
   transition:
@@ -100,10 +106,15 @@
     border-color 0.25s,
     box-shadow 0.25s;
 }
-.betting-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--gold-light);
-  box-shadow: 0 12px 26px #0004;
+.betting-card.has-wager {
+  border-color: var(--suit-accent);
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--suit-accent) 13%, transparent);
+}
+@media (hover: hover) {
+  .betting-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--suit-accent);
+  }
 }
 .betting-card__number {
   display: block;
@@ -140,12 +151,21 @@
 }
 .betting-card__bottom i {
   font-style: normal;
-  color: var(--gold-light);
+  color: var(--suit-accent);
   margin-right: 6px;
 }
-.betting-card--hearts .betting-card__bottom i,
-.betting-card--diamonds .betting-card__bottom i {
-  color: #e0a28a;
+.betting-card.has-wager .betting-card__count {
+  color: var(--suit-accent);
+  animation: wager-count 280ms ease-out;
+}
+.betting-card .stepper button:active:not(:disabled) {
+  background: var(--suit-accent);
+  color: var(--forest);
+}
+@keyframes wager-count {
+  45% {
+    transform: scale(1.22);
+  }
 }
 .stepper {
   display: flex;
@@ -435,7 +455,14 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .player-ceremony,
-  .player-ceremony__spotlight {
+  .player-ceremony__spotlight,
+  .betting-card.has-wager .betting-card__count {
     animation: none;
+  }
+  .betting-card {
+    transition: none;
+  }
+  .betting-card:hover {
+    transform: none;
   }
 }

@@ -27,6 +27,8 @@ export default function GameHost() {
   const [cardGrid, setCardGrid] = useState(initialGrid);
   const [raceResult, setRaceResult] = useState(null);
   const [revealedWinner, setRevealedWinner] = useState(null);
+  const [sideCard, setSideCard] = useState(null);
+  const finishSideCardReveal = useCallback(() => setSideCard(null), []);
   const finishWinnerReveal = useCallback(() => setRevealedWinner(null), []);
   const [ceremony, setCeremony] = useState(null);
   const [postCeremony, setPostCeremony] = useState(null);
@@ -50,6 +52,7 @@ export default function GameHost() {
         );
         setLastCard(state.lastCard);
         setCardGrid(state.grid);
+        setSideCard(null);
         setRaceResult(state.raceResult);
         if (!state.raceResult) setRevealedWinner(null);
         setCeremony(state.ceremony);
@@ -84,6 +87,7 @@ export default function GameHost() {
       setPlayers(nextPlayers);
       setIsGameStarted(false);
       setLastCard(null);
+      setSideCard(null);
       setCardGrid(grid);
       setRaceResult(null);
       setRevealedWinner(null);
@@ -98,7 +102,11 @@ export default function GameHost() {
     socket.on("postDrinkingCeremony", onPostCeremony);
     socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
-    socket.on("updateGrid", setCardGrid);
+    const onGrid = (grid, revealedSideCard = null) => {
+      setCardGrid(grid);
+      setSideCard(revealedSideCard);
+    };
+    socket.on("updateGrid", onGrid);
     const onWon = (result) => {
       setRevealedWinner(result.winner);
       setRaceResult(result);
@@ -116,7 +124,7 @@ export default function GameHost() {
       socket.off("postDrinkingCeremony", onPostCeremony);
       socket.off("postDrinkingComplete", onPostComplete);
       socket.off("cardFlipped", setLastCard);
-      socket.off("updateGrid", setCardGrid);
+      socket.off("updateGrid", onGrid);
       socket.off("gameWon", onWon);
       socket.off("distributionUpdate", setRaceResult);
       socket.off("newGame", onNewGame);
@@ -293,7 +301,7 @@ export default function GameHost() {
               {isGameStarted && (
                 <button
                   className="club-button"
-                  disabled={Boolean(revealedWinner)}
+                  disabled={Boolean(revealedWinner || sideCard)}
                   onClick={() => socket.emit("flipCard", roomId)}
                 >
                   Flip next card <span aria-hidden="true">→</span>
@@ -356,6 +364,8 @@ export default function GameHost() {
               grid={cardGrid}
               lastCard={lastCard}
               winner={revealedWinner}
+              sideCard={sideCard}
+              onSideCardEnd={finishSideCardReveal}
               onWinnerRevealEnd={finishWinnerReveal}
             />
           </div>

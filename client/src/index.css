@@ -13,6 +13,18 @@
   color: var(--cream);
   background: var(--forest);
 }
+:is(.race-lane--clubs, .betting-card--clubs) {
+  --suit-accent: #b7e2a1;
+}
+:is(.race-lane--diamonds, .betting-card--diamonds) {
+  --suit-accent: #ffd07e;
+}
+:is(.race-lane--hearts, .betting-card--hearts) {
+  --suit-accent: #ffa49a;
+}
+:is(.race-lane--spades, .betting-card--spades) {
+  --suit-accent: #b6d7ff;
+}
 * {
   box-sizing: border-box;
 }
