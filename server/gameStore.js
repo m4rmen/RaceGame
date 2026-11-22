@@ -1,7 +1,7 @@
 const { randomUUID } = require("node:crypto");
 const Game = require("./game");
 
-const ROOM_TTL_SECONDS = 24 * 60 * 60;
+const ROOM_TTL_SECONDS = 60 * 60;
 const LOCK_TTL_MS = 10000;
 
 class GameStore {
@@ -75,12 +75,14 @@ class GameStore {
       const result = await change(game);
       if (result?.delete) await this.redis.del(this.key(roomId));
       else if (result) {
-        await this.redis.set(
+        // Preserve the creation deadline and never recreate an expired room.
+        const saved = await this.redis.set(
           this.key(roomId),
           JSON.stringify(game),
-          "EX",
-          ROOM_TTL_SECONDS,
+          "XX",
+          "KEEPTTL",
         );
+        if (saved !== "OK") return null;
       }
       return result;
     } finally {

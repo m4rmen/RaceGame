@@ -11,9 +11,11 @@ The browser connects to Socket.IO on the same origin at `/api/socket.io`. There 
 
 ## Required Redis connection
 
-Provision a Redis database that accepts standard Redis TCP connections and supports Redis Streams. Link it to the Vercel project and set the **server runtime** environment variable `REDIS_URL` to its `redis://` or `rediss://` connection string for Preview and Production. Keep the URL secret and out of the React build. The server refuses to start on Vercel without it. This is an external database credential, not a Vercel service binding.
+Provision a Redis database that accepts standard Redis TCP connections and supports Pub/Sub. Link it to the Vercel project and set the **server runtime** environment variable `REDIS_URL` to its `redis://` or `rediss://` connection string for Preview and Production. Keep the URL secret and out of the React build. The server refuses to start on Vercel without it. This is an external database credential, not a Vercel service binding.
 
-The server stores each room in Redis for 24 hours after its last update and uses the Socket.IO Redis Streams adapter to deliver events across function instances. Each browser tab keeps a private session ID so it can reclaim its seat after a WebSocket reconnect or page refresh. Local development works without Redis using an in-memory store.
+Redis expires each new room one hour after creation. Bets, race progress, and replays use the original deadline. Redis handles expiration even while the app is idle. Socket.IO broadcasts via Redis Pub/Sub without storing event history. Each browser tab keeps a private session ID so it can reload the room snapshot after a WebSocket reconnect or page refresh. Local development works without Redis using an in-memory store.
+
+Existing rooms keep their previous expiry. If this Redis database is dedicated to RaceGame, you can delete the old `socket.io` stream key from the Redis database browser once all deployments using the Streams adapter have stopped. The Pub/Sub adapter does not use that key.
 
 A disconnected player's seat stays reserved for reconnection. The host can remove a player who will not return; if the room becomes empty, it returns to the lobby.
 

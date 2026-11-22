@@ -2,7 +2,7 @@ const express = require("express");
 const http = require("node:http");
 const Redis = require("ioredis");
 const { Server } = require("socket.io");
-const { createAdapter } = require("@socket.io/redis-streams-adapter");
+const { createAdapter } = require("@socket.io/redis-adapter");
 const Game = require("./game");
 const GameStore = require("./gameStore");
 
@@ -14,7 +14,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   path: "/api/socket.io",
-  connectionStateRecovery: { maxDisconnectionDuration: 2 * 60 * 1000 },
   cors: {
     origin: process.env.CLIENT_ORIGIN || true,
     methods: ["GET", "POST"],
@@ -30,7 +29,7 @@ const adapterRedis = redis?.duplicate();
 const gameStore = new GameStore(redis);
 const ready = redis
   ? Promise.all([redis.connect(), adapterRedis.connect()]).then(() => {
-      io.adapter(createAdapter(adapterRedis));
+      io.adapter(createAdapter(redis, adapterRedis, { key: "ace-race:socket.io" }));
     })
   : Promise.resolve();
 ready.catch((error) => console.error("Redis connection failed:", error));
