@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import "./WaitingRoom.css";
@@ -9,14 +9,18 @@ export default function WaitingRoom() {
   const socket = useSocket();
   const navigate = useNavigate();
   const [players, setPlayers] = useState([]);
+  const isReturningPlayer =
+    sessionStorage.getItem("raceRole") === "player" &&
+    sessionStorage.getItem("currentRoomId") === roomId;
+  const invitePath = /^[0-9]{4}$/.test(roomId) ? `/join/${roomId}` : "/join";
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !isReturningPlayer) return;
     const resume = () => {
       socket.emit("resumeRoom", roomId, (response) => {
         if (!response.success) {
           sessionStorage.removeItem("currentRoomId");
           sessionStorage.removeItem("raceRole");
-          navigate("/join");
+          navigate(invitePath, { replace: true });
           return;
         }
         setPlayers(response.state.players);
@@ -46,7 +50,8 @@ export default function WaitingRoom() {
       socket.off("playerRemoved", onPlayerRemoved);
       socket.off("bettingPhase", onBetting);
     };
-  }, [socket, roomId, navigate]);
+  }, [socket, roomId, navigate, isReturningPlayer, invitePath]);
+  if (!isReturningPlayer) return <Navigate to={invitePath} replace />;
   return (
     <div className="app-shell staging-page">
       <ClubHeader roomId={roomId} label="The paddock" />

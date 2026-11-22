@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { QRCodeCanvas } from "qrcode.react";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import "./Host.css";
@@ -50,6 +51,10 @@ export default function Host() {
       socket.off("updatePlayers", onPlayers);
     };
   }, [socket, navigate]);
+  const inviteUrl = code
+    ? new URL(`/waitingroom/${code}`, window.location.origin).href
+    : "";
+
   return (
     <div className="app-shell staging-page">
       <ClubHeader roomId={code} label="Host the event" />
@@ -62,13 +67,31 @@ export default function Host() {
             field.
           </h1>
           <p className="page-intro">
-            Share the race code with players. Once everyone has joined, open the betting
-            ring.
+            Invite players to the race. Once everyone has joined, open the betting ring.
           </p>
           <div className="staging-code club-panel">
             <span className="eyebrow">Your race code</span>
             <strong>{code || "····"}</strong>
-            <small>Ask players to enter this code on their phones.</small>
+            {inviteUrl && (
+              <div className="host-invite">
+                <QRCodeCanvas
+                  className="host-invite__qr"
+                  value={inviteUrl}
+                  size={168}
+                  style={{ height: "auto" }}
+                  marginSize={4}
+                  bgColor="#f5ecd8"
+                  fgColor="#142720"
+                  aria-hidden="true"
+                />
+                <div className="host-invite__details">
+                  <small>Scan to join with your phone, or enter the race code.</small>
+                  <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
+                    Open invite link
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="staging-roster club-panel">
