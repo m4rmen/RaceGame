@@ -2,6 +2,7 @@ import React, {useEffect, useState} from "react";
 import { useParams } from 'react-router-dom';
 import { useSocket } from "../SocketContext";
 import "./Game.css";
+import RaceResults from "./RaceResults";
 
 
 const Game = () => {
@@ -14,6 +15,7 @@ const Game = () => {
     const [isGameStarted, setIsGameStarted] = useState(false);
     const [cardGrid, setCardGrid] = useState([]);
     const [lastCard, setLastCard] = useState(null);
+    const [raceResult, setRaceResult] = useState(null);
 
     useEffect(() => {
         socket.emit("getPlayers", roomId, (playersInRoom) => {
@@ -34,12 +36,14 @@ const Game = () => {
         });
         socket.on("cardFlipped", setLastCard);
         socket.on("updateGrid", setCardGrid);
+        socket.on("gameWon", setRaceResult);
 
         return () => {
             socket.off("updatePlayers");
             socket.off("startGame");
             socket.off("cardFlipped");
             socket.off("updateGrid");
+            socket.off("gameWon");
         };
     }, [socket, roomId]);
 
@@ -148,6 +152,8 @@ const Game = () => {
                     </div>
                 </div>
             )}
+
+            <RaceResults result={raceResult} />
 
 
         </div>

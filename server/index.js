@@ -121,7 +121,10 @@ io.on("connection", (socket) => {
       io.to(roomId).emit("cardFlipped", card);
       io.to(roomId).emit("updateGrid", currentGame.grid);
       if(currentGame.gameWon) {
-        io.to(roomId).emit("gameWon", currentGame.winner)
+        io.to(roomId).emit("gameWon", {
+          winner: currentGame.winner,
+          players: currentGame.players.map(({ username, bet }) => ({ username, bet }))
+        });
       }
       io.to(roomId).emit("updatePosition", currentGame.positions)
     }, 100);

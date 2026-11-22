@@ -2,6 +2,7 @@ import React, {useEffect, useState} from "react";
 import { useParams } from 'react-router-dom';
 import { useSocket } from "../SocketContext";
 import "./GameHost.css"; // Assuming you have a CSS file for styling
+import RaceResults from "./RaceResults";
 
 const GameHost = () => {
     const { roomId } = useParams();
@@ -10,6 +11,7 @@ const GameHost = () => {
     const [isGameStarted, setIsGameStarted] = useState(false);
     const [lastCard, setLastCard] = useState(null);
     const [positions, setPositions] = useState({});
+    const [raceResult, setRaceResult] = useState(null);
     const [cardGrid, setCardGrid] = useState([
         ['','','','',''],
         ['back_of_card','','','',''],
@@ -41,6 +43,7 @@ const GameHost = () => {
         socket.on("cardFlipped", setLastCard);
         socket.on("updateGrid", setCardGrid);
         socket.on("updatePosition", setPositions);
+        socket.on("gameWon", setRaceResult);
 
         return () => {
             socket.off("updatePlayers");
@@ -48,6 +51,7 @@ const GameHost = () => {
             socket.off("cardFlipped");
             socket.off("updateGrid");
             socket.off("updatePosition");
+            socket.off("gameWon");
         };
 
 
@@ -79,7 +83,7 @@ const GameHost = () => {
             {!isGameStarted && (<h3>Waiting for players to confirm their bets...</h3>)}
             {isGameStarted && (
                 <>
-                    <button onClick={() => socket.emit("flipCard", roomId)}>Flip next card</button>
+                    {!raceResult && <button onClick={() => socket.emit("flipCard", roomId)}>Flip next card</button>}
                     {lastCard && <p>Last card: {lastCard.replace("_", " of ")}</p>}
                     <p>{Object.entries(positions).map(([horse, place]) => `${horse.replace("_ace", "")}: ${place}`).join(" | ")}</p>
                 </>
@@ -96,6 +100,8 @@ const GameHost = () => {
                     </div>
                 ))}
             </div>
+
+            <RaceResults result={raceResult} />
 
 
 

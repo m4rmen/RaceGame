@@ -1,0 +1,24 @@
+.race-results {
+  width: min(90vw, 480px);
+  margin: 20px auto;
+  padding: 20px;
+  border: 2px solid #d4af37;
+  border-radius: 12px;
+  background: #fff8dc;
+  color: #1f2937;
+}
+
+.race-results h2,
+.race-results h3 {
+  margin: 0 0 12px;
+}
+
+.winning-horse {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.race-results ul {
+  margin: 0;
+  padding-left: 20px;
+}
