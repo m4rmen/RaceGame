@@ -1,112 +1,103 @@
-import React, {useEffect} from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSocket } from "../SocketContext";
-import './Home.css';
-import { useNavigate } from 'react-router-dom';
-import Typography from '@mui/material/Typography';
-import Modal from '@mui/material/Modal';
-import Box from '@mui/material/Box';
+import ClubHeader from "./ClubHeader";
 
-
-const style = {
-    width: { xs: "90vw", sm: 400 },
-    maxHeight: "90vh",
-    bgcolor: "background.paper",
-    borderRadius: 4,
-    boxShadow: 24,
-    p: { xs: 2, sm: 4 },
-    overflowY: "auto",
-};
-
-
-
-const Home = () => {
-    const socket = useSocket();
-    const [open, setOpen] = React.useState(false);
-    const handleOpen = () => setOpen(true);
-    const handleClose = () => setOpen(false);
-
-    const navigate = useNavigate();
-
-    const handleJoinGame = () => {
-        navigate("/join");
-    }
-
-    const handleHostGame = () => {
-        navigate("/host");
-    }
-
-    useEffect(() => {
+export default function Home() {
+  const socket = useSocket();
+  const navigate = useNavigate();
+  const [rulesOpen, setRulesOpen] = useState(false);
+  useEffect(() => {
     const roomId = sessionStorage.getItem("currentRoomId");
     if (roomId && socket) {
       socket.emit("deleteRoom", roomId);
       sessionStorage.removeItem("currentRoomId");
     }
   }, [socket]);
-
-    return (
-        <div className="home-container">
-            <h1>Welcome to the Race Game!</h1>
-            <p>Get ready to place your bets and watch the race unfold!</p>
-            <div className="inline-container">
-                <div className="button-container">
-                    <button onClick={handleJoinGame}> Join Game </button>
-                    <button onClick={handleHostGame}> Host </button>
-                </div>
-
-                <button onClick={handleOpen} className="rules-button">Game rules</button>
-                <Modal 
-                    open={open} 
-                    onClose={handleClose}
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        p: 2,              
-                    }}
-                >
-                    <Box sx={style}>
-                        <Typography variant="h6" component="h2">
-                            Rules of the game
-                        </Typography>
-                            <h3>Placing Bets</h3>
-                        <Typography component="span">
-                            1. Each player chooses a horse (ace suit card) to bet on.
-                        </Typography>
-                        <br />
-                        <Typography component="span">
-                            2. Players must then say how much they want to bet. <span style={{ fontStyle: 'italic', color: 'gray' }} >For example, 4 sips on the Ace of Spades.</span>
-                        </Typography>
-                        <br />
-                        <Typography component="span">
-                            3. They must then drink their bet amount upfront. <span style={{ fontStyle: 'italic', color: 'gray' }} >For example, if they bet 4 sips, they must drink 4 sips of their drink before the race starts.</span>
-                        </Typography>
-                        <br />
-                        
-                        
-                        <h3>Race Details</h3>
-                        <Typography component="span">
-                            1. Cards from the race deck will be drawn, the horse with the same suit advances a position.
-                        </Typography>
-                        <br />
-                        <Typography component="span">
-                            2. When all horses have passed a row, a cramp card will be revealed and the suit will determine the horse that returns a position.
-                        </Typography>
-                        <br />
-                        <Typography component="span">
-                            3. The first horse to reach the finish line wins the race.
-                        </Typography>
-                        <br />
-                        <h3>Winning and Drinking</h3>   
-                        <Typography component="span">
-                            The players whose horse wins the race distribute sips equal to their bet among the other players.
-                        </Typography>
-                        <br />
-                    </Box>
-                </Modal>
-            </div>
-
+  return (
+    <div className="app-shell home-page">
+      <ClubHeader label="The racing club" />
+      <main className="home-hero">
+        <div className="home-hero__copy">
+          <span className="eyebrow">A card game with a racing heart</span>
+          <h1>
+            The thrill of
+            <br />
+            <em>the finish.</em>
+          </h1>
+          <p>Place your wager. Pick your horse. Watch the aces race for the line.</p>
+          <div className="home-hero__actions">
+            <button className="club-button" onClick={() => navigate("/join")}>
+              Join a race <span aria-hidden="true">→</span>
+            </button>
+            <button
+              className="club-button club-button--outline"
+              onClick={() => navigate("/host")}
+            >
+              Host a race
+            </button>
+          </div>
         </div>
-    );
+        <div className="home-hero__art" aria-hidden="true">
+          <span className="home-hero__ring">THE ACE RACE · THE ACE RACE ·</span>
+          <span className="home-hero__horse">♞</span>
+          <div className="home-hero__cards">
+            <img src="/Images/spades_ace.png" alt="" />
+            <img src="/Images/hearts_ace.png" alt="" />
+          </div>
+        </div>
+      </main>
+      <div className="home-footer">
+        <span>
+          FOUR HORSES <i>✦</i> SEVEN LENGTHS <i>✦</i> ONE WINNER
+        </span>
+        <button onClick={() => setRulesOpen(true)}>
+          How to play <span aria-hidden="true">↗</span>
+        </button>
+      </div>
+      {rulesOpen && (
+        <div
+          className="rules-overlay"
+          role="presentation"
+          onClick={() => setRulesOpen(false)}
+        >
+          <section
+            className="rules-dialog club-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rules-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              className="rules-dialog__close"
+              aria-label="Close rules"
+              onClick={() => setRulesOpen(false)}
+            >
+              ×
+            </button>
+            <span className="eyebrow">The racecard</span>
+            <h2 id="rules-title">How to play</h2>
+            <ol>
+              <li>
+                <strong>Place your bets.</strong> Choose one or more of the four ace
+                horses and set the number of drink units on each. Drink your wager
+                upfront.
+              </li>
+              <li>
+                <strong>Watch the race.</strong> The host draws cards. Each card
+                advances the ace of its suit. Side cards may send a horse back.
+              </li>
+              <li>
+                <strong>Share the winnings.</strong> Players who backed the winning
+                horse distribute twice their winning wager among the other players.
+              </li>
+            </ol>
+            <button className="club-button" onClick={() => setRulesOpen(false)}>
+              Back to the race
+            </button>
+          </section>
+        </div>
+      )}
+    </div>
+  );
 }
-
-export default Home;

@@ -11,14 +11,13 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io("http://localhost:5000", { transports: ["websocket"] });
-    setSocket(newSocket);   
+    const serverUrl =
+      process.env.REACT_APP_SERVER_URL ||
+      `${window.location.protocol}//${window.location.hostname}:5000`;
+    const newSocket = io(serverUrl, { transports: ["websocket"] });
+    setSocket(newSocket);
     return () => newSocket.disconnect();
   }, []);
 
-  return (
-    <SocketContext.Provider value={socket}>
-      {children}
-    </SocketContext.Provider>
-  );
+  return <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>;
 };

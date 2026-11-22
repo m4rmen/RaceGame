@@ -32,7 +32,7 @@ function openTab() {
   const process = spawn("cmd.exe", ["/c", "start", "", clientUrl], {
     detached: true,
     stdio: "ignore",
-    windowsHide: true
+    windowsHide: true,
   });
   process.unref();
 }

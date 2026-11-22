@@ -1,0 +1,9 @@
+node_modules/
+**/node_modules/
+build/
+**/build/
+coverage/
+**/coverage/
+**/package-lock.json
+client/README.md
+client/public/robots.txt

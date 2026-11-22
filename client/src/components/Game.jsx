@@ -1,238 +1,285 @@
-import React, {useEffect, useState} from "react";
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
+import ClubHeader from "./ClubHeader";
+import RaceTrack from "./RaceTrack";
 import "./Game.css";
 
+const suits = [
+  { name: "clubs", symbol: "♣" },
+  { name: "spades", symbol: "♠" },
+  { name: "hearts", symbol: "♥" },
+  { name: "diamonds", symbol: "♦" },
+];
 
-const Game = () => {
-    const { roomId } = useParams();
-    const socket = useSocket();
-    const [players, setPlayers] = useState([]);
-    const [currentPlayer, setCurrentPlayer] = useState(null);
-    const [betConfirmed, setBetConfirmed] = useState(false);
-    const [isGameStarted, setIsGameStarted] = useState(false);
-    const [cardGrid, setCardGrid] = useState([]);
-    const [lastCard, setLastCard] = useState(null);
-    const [raceResult, setRaceResult] = useState(null);
-    const [distribution, setDistribution] = useState({});
-    const [distributionError, setDistributionError] = useState("");
+export default function Game() {
+  const { roomId } = useParams();
+  const socket = useSocket();
+  const [players, setPlayers] = useState([]);
+  const [currentPlayer, setCurrentPlayer] = useState(null);
+  const [betConfirmed, setBetConfirmed] = useState(false);
+  const [isGameStarted, setIsGameStarted] = useState(false);
+  const [cardGrid, setCardGrid] = useState([]);
+  const [lastCard, setLastCard] = useState(null);
+  const [raceResult, setRaceResult] = useState(null);
+  const [distribution, setDistribution] = useState({});
+  const [distributionError, setDistributionError] = useState("");
 
-    useEffect(() => {
-        socket.emit("getPlayers", roomId, (playersInRoom) => {
-            setPlayers(playersInRoom);
-            setCurrentPlayer(playersInRoom.find(player => player.socketId === socket.id));
-            console.log("Players in room: ", playersInRoom[0].socketId);
-            console.log("Socket ID: ", socket.id);
-        });
-
-        socket.on("updatePlayers", (updatedPlayers) => {
-            setPlayers(updatedPlayers);
-            setCurrentPlayer(updatedPlayers.find(player => player.socketId === socket.id));
-        });
-
-        socket.on("startGame", ({ grid }) => {
-            setIsGameStarted(true);
-            setCardGrid(grid);
-        });
-        socket.on("cardFlipped", setLastCard);
-        socket.on("updateGrid", setCardGrid);
-        socket.on("gameWon", (result) => {
-            setRaceResult(result);
-            setDistribution({});
-        });
-        socket.on("distributionUpdate", setRaceResult);
-        socket.on("newGame", ({ players: newPlayers, grid }) => {
-            setPlayers(newPlayers);
-            setCurrentPlayer(newPlayers.find((player) => player.socketId === socket.id));
-            setBetConfirmed(false);
-            setIsGameStarted(false);
-            setCardGrid(grid);
-            setLastCard(null);
-            setRaceResult(null);
-            setDistribution({});
-            setDistributionError("");
-        });
-
-        return () => {
-            socket.off("updatePlayers");
-            socket.off("startGame");
-            socket.off("cardFlipped");
-            socket.off("updateGrid");
-            socket.off("gameWon");
-            socket.off("distributionUpdate");
-            socket.off("newGame");
-        };
-    }, [socket, roomId]);
-
-
-    const handleBet = (add, suit) =>{
-        if(add==="+"){
-            currentPlayer.bet[suit] += 1;
-            setCurrentPlayer({...currentPlayer});
-            socket.emit("playerBetChange", currentPlayer.bet, roomId);
-        }else{
-            if(currentPlayer.bet[suit] > 0){
-                currentPlayer.bet[suit] -= 1;
-                setCurrentPlayer({...currentPlayer});
-                socket.emit("playerBetChange", currentPlayer.bet, roomId);
-            }
-        }
-
-    }
-
-    const handleConfirmBets = () => {
-        socket.emit("betsPlaced", roomId);
-        setBetConfirmed(true);
-    }
-
-    const resultForCurrentPlayer = raceResult?.players.find((player) => player.socketId === socket.id);
-    const distributedTotal = Object.values(distribution).reduce((total, amount) => total + amount, 0);
-    const remainingDrinks = (resultForCurrentPlayer?.drinkAllowance || 0) - distributedTotal;
-
-    const changeDistribution = (recipientId, change) => {
-        const currentAmount = distribution[recipientId] || 0;
-        const currentTotal = Object.values(distribution).reduce((total, amount) => total + amount, 0);
-        if (change > 0 && currentTotal >= resultForCurrentPlayer.drinkAllowance) return;
-
-        const updatedDistribution = {
-            ...distribution,
-            [recipientId]: Math.max(0, currentAmount + change)
-        };
-        setDistribution(updatedDistribution);
-        socket.emit("updateDistribution", roomId, updatedDistribution);
-        setDistributionError("");
+  useEffect(() => {
+    if (!socket) return;
+    socket.emit("getPlayers", roomId, (inRoom) => {
+      setPlayers(inRoom || []);
+      setCurrentPlayer(inRoom?.find((player) => player.socketId === socket.id) || null);
+    });
+    const onPlayers = (nextPlayers) => {
+      setPlayers(nextPlayers);
+      setCurrentPlayer(
+        nextPlayers.find((player) => player.socketId === socket.id) || null,
+      );
     };
-
-    const handleConfirmDistribution = () => {
-        socket.emit("submitDistribution", roomId, distribution, (response) => {
-            if (!response.success) setDistributionError(response.message);
-        });
+    const onStart = ({ grid }) => {
+      setIsGameStarted(true);
+      setCardGrid(grid);
     };
+    const onWon = (result) => {
+      setRaceResult(result);
+      setDistribution({});
+    };
+    const onNewGame = ({ players: nextPlayers, grid }) => {
+      onPlayers(nextPlayers);
+      setBetConfirmed(false);
+      setIsGameStarted(false);
+      setCardGrid(grid);
+      setLastCard(null);
+      setRaceResult(null);
+      setDistribution({});
+      setDistributionError("");
+    };
+    socket.on("updatePlayers", onPlayers);
+    socket.on("startGame", onStart);
+    socket.on("cardFlipped", setLastCard);
+    socket.on("updateGrid", setCardGrid);
+    socket.on("gameWon", onWon);
+    socket.on("distributionUpdate", setRaceResult);
+    socket.on("newGame", onNewGame);
+    return () => {
+      socket.off("updatePlayers", onPlayers);
+      socket.off("startGame", onStart);
+      socket.off("cardFlipped", setLastCard);
+      socket.off("updateGrid", setCardGrid);
+      socket.off("gameWon", onWon);
+      socket.off("distributionUpdate", setRaceResult);
+      socket.off("newGame", onNewGame);
+    };
+  }, [socket, roomId]);
 
-    return (
-        <div className="game-container">
-            <h1>Game</h1>
-            <p>Player: {players.find(player => player.socketId === socket.id)?.username}</p>
+  const handleBet = (change, suit) => {
+    if (!currentPlayer || betConfirmed) return;
+    const bet = {
+      ...currentPlayer.bet,
+      [suit]: Math.max(0, (currentPlayer.bet[suit] || 0) + change),
+    };
+    setCurrentPlayer({ ...currentPlayer, bet });
+    socket.emit("playerBetChange", bet, roomId);
+  };
+  const resultForCurrentPlayer = raceResult?.players.find(
+    (player) => player.socketId === socket?.id,
+  );
+  const distributedTotal = Object.values(distribution).reduce(
+    (total, amount) => total + amount,
+    0,
+  );
+  const remainingDrinks =
+    (resultForCurrentPlayer?.drinkAllowance || 0) - distributedTotal;
+  const changeDistribution = (recipientId, change) => {
+    const currentAmount = distribution[recipientId] || 0;
+    if (change > 0 && remainingDrinks <= 0) return;
+    const next = {
+      ...distribution,
+      [recipientId]: Math.max(0, currentAmount + change),
+    };
+    setDistribution(next);
+    socket.emit("updateDistribution", roomId, next);
+    setDistributionError("");
+  };
+  const confirmDistribution = () =>
+    socket.emit("submitDistribution", roomId, distribution, (response) => {
+      if (!response.success) setDistributionError(response.message);
+    });
+  const playerName =
+    currentPlayer?.username ||
+    players.find((player) => player.socketId === socket?.id)?.username;
 
-            {!raceResult && ((players.length > 0) ? (
-                <div>
-                    <h2>Players in Room:</h2>
-                    <ul>
-                        {players.map((player, index) => (
-                            player.socketId !== socket.id && 
-                            <div key={index}>
-                                <li style={{ color: player.betConfirmed ? "green" : "red" }}>{player.username}</li>
-                                {Object.keys(player.bet).map((suit) => (
-                                    player.bet[suit] > 0 && <div key={suit}>
-                                        <span>{suit}: {player.bet[suit]}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </ul>
-                </div>
+  return (
+    <div className="app-shell player-page">
+      <ClubHeader roomId={roomId} label={playerName || "Player view"} />
+      <div className="player-page__intro">
+        <span className="eyebrow">The Ace Race / Your seat at the track</span>
+        <h1 className="page-title">
+          {raceResult
+            ? "The result is in."
+            : isGameStarted
+              ? "Eyes on the finish."
+              : "Back your horse."}
+        </h1>
+        <p className="page-intro">
+          {raceResult
+            ? "The winning wager pays double. Choose who receives your drinks."
+            : isGameStarted
+              ? "The cards decide the pace. Follow your horse down the course."
+              : "Choose your ace and set your wager before the gates open."}
+        </p>
+      </div>
+      {raceResult ? (
+        <section className="distribution-panel club-panel">
+          <span className="eyebrow">Official race result</span>
+          <h2>{raceResult.winner.replace("_ace", "")} wins.</h2>
+          {resultForCurrentPlayer &&
+            (resultForCurrentPlayer.drinkAllowance === 0 ? (
+              <div className="player-notice">
+                Your horse did not win this time. Stay tuned for the next race.
+              </div>
+            ) : resultForCurrentPlayer.distributionConfirmed ? (
+              <div className="player-notice">
+                Your distribution is confirmed. Waiting for the rest of the field.
+              </div>
             ) : (
-                <p>No other players in the room</p>
+              <>
+                <div className="distribution-panel__total">
+                  <span>Available to give</span>
+                  <strong>{resultForCurrentPlayer.drinkAllowance}</strong>
+                  <span>Remaining: {remainingDrinks}</span>
+                </div>
+                <h3>Choose your recipients</h3>
+                <div className="distribution-list">
+                  {raceResult.players
+                    .filter((player) => player.socketId !== socket.id)
+                    .map((player) => (
+                      <div className="distribution-player" key={player.socketId}>
+                        <span>{player.username}</span>
+                        <div className="stepper">
+                          <button
+                            aria-label={`Give one less to ${player.username}`}
+                            disabled={!distribution[player.socketId]}
+                            onClick={() => changeDistribution(player.socketId, -1)}
+                          >
+                            −
+                          </button>
+                          <strong>{distribution[player.socketId] || 0}</strong>
+                          <button
+                            aria-label={`Give one more to ${player.username}`}
+                            disabled={remainingDrinks === 0}
+                            onClick={() => changeDistribution(player.socketId, 1)}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+                {distributionError && (
+                  <p className="distribution-error">{distributionError}</p>
+                )}
+                <button
+                  className="club-button player-page__submit"
+                  disabled={remainingDrinks !== 0}
+                  onClick={confirmDistribution}
+                >
+                  Confirm distribution <span aria-hidden="true">→</span>
+                </button>
+              </>
             ))}
-
-            {(!isGameStarted && currentPlayer && !betConfirmed) &&
-                <div className="betting-container">
-                <div className="betting-card-container">
-                    <div className="betting-card">
-                        <img src="/Images/clubs_ace.png" alt="" />
-                        <div>
-                            <button onClick={() => handleBet("-", "clubs")}>-</button>
-                            <span>{currentPlayer.bet?.clubs || 0}</span>
-                            <button onClick={() => handleBet("+", "clubs")}>+</button>
-                        </div>
-                        
-                    </div>
-                    <div className="betting-card">
-                        <img src="/Images/spades_ace.png" alt="" />
-                        <div>
-                            <button onClick={() => handleBet("-", "spades")}>-</button>
-                            <span>{currentPlayer.bet?.spades || 0}</span>
-                            <button onClick={() => handleBet("+", "spades")}>+</button>
-                        </div>
-                    </div>
-                    <div className="betting-card">
-                        <img src="/Images/hearts_ace.png" alt="" />
-                        <div>
-                            <button onClick={() => handleBet("-", "hearts")}>-</button>
-                            <span>{currentPlayer.bet?.hearts || 0}</span>
-                            <button onClick={() => handleBet("+", "hearts")}>+</button>
-                        </div>
-                    </div>
-                    <div className="betting-card">
-                        <img src="/Images/diamonds_ace.png" alt="" />
-                        <div>
-                            <button onClick={() => handleBet("-", "diamonds")}>-</button>
-                            <span>{currentPlayer.bet?.diamonds || 0}</span>
-                            <button onClick={() => handleBet("+", "diamonds")}>+</button>
-                        </div>
-                    </div>
+        </section>
+      ) : isGameStarted ? (
+        <>
+          <RaceTrack grid={cardGrid} lastCard={lastCard} />
+          <div className="player-race-note club-panel">
+            <span className="eyebrow">Your wager</span>
+            <strong>
+              {currentPlayer
+                ? suits
+                    .filter(({ name }) => currentPlayer.bet[name] > 0)
+                    .map(
+                      ({ name, symbol }) =>
+                        `${symbol} ${name} × ${currentPlayer.bet[name]}`,
+                    )
+                    .join("  ·  ") || "No wager"
+                : "Loading…"}
+            </strong>
+          </div>
+        </>
+      ) : (
+        <div className="player-page__betting">
+          <div className="player-page__section-title">
+            <span className="eyebrow">01 / The betting ring</span>
+            <h2>Pick your contenders.</h2>
+          </div>
+          <div className="betting-card-container">
+            {suits.map(({ name, symbol }, index) => (
+              <div className={`betting-card betting-card--${name}`} key={name}>
+                <span className="betting-card__number">
+                  NO. {String(index + 1).padStart(2, "0")}
+                </span>
+                <img src={`/Images/${name}_ace.png`} alt={`${name} ace`} />
+                <div className="betting-card__bottom">
+                  <span>
+                    <i>{symbol}</i>
+                    {name}
+                  </span>
+                  <div className="stepper">
+                    <button
+                      aria-label={`Decrease ${name} bet`}
+                      disabled={betConfirmed || !currentPlayer?.bet[name]}
+                      onClick={() => handleBet(-1, name)}
+                    >
+                      −
+                    </button>
+                    <strong>{currentPlayer?.bet[name] || 0}</strong>
+                    <button
+                      aria-label={`Increase ${name} bet`}
+                      disabled={betConfirmed || !currentPlayer}
+                      onClick={() => handleBet(1, name)}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-                <button onClick={handleConfirmBets}>Confirm Bets</button>
-                </div>
-            }
-
-            {isGameStarted && !raceResult && (
-                <div>
-                    <h2>The race is on!</h2>
-                    {lastCard && <p>Last card: {lastCard.replace("_", " of ")}</p>}
-                    <div className="card-container">
-                        {cardGrid.map((row, rowIndex) => (
-                            <div key={rowIndex} className="card-row">
-                                {row.map((card, colIndex) => (
-                                    <div key={colIndex} className="card">
-                                        {card && <img src={`/Images/${card}.png`} alt={card} />}
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {raceResult && resultForCurrentPlayer && (
-                <section className="distribution-panel">
-                    <h2>{raceResult.winner.replace("_ace", "")} won the race</h2>
-                    {resultForCurrentPlayer.drinkAllowance === 0 ? (
-                        <p>You did not bet on the winning horse, so you have no drinks to distribute.</p>
-                    ) : resultForCurrentPlayer.distributionConfirmed ? (
-                        <p>Your distribution has been submitted. Waiting for the other players.</p>
-                    ) : (
-                        <>
-                            <p>
-                                Distribute <strong>{resultForCurrentPlayer.drinkAllowance}</strong> drink units.
-                                Remaining: <strong>{remainingDrinks}</strong>
-                            </p>
-                            <div className="distribution-list">
-                                {raceResult.players
-                                    .filter((player) => player.socketId !== socket.id)
-                                    .map((player) => (
-                                        <div className="distribution-player" key={player.socketId}>
-                                            <span>{player.username}</span>
-                                            <div>
-                                                <button onClick={() => changeDistribution(player.socketId, -1)}>-</button>
-                                                <span>{distribution[player.socketId] || 0}</span>
-                                                <button onClick={() => changeDistribution(player.socketId, 1)}>+</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                            </div>
-                            {distributionError && <p className="distribution-error">{distributionError}</p>}
-                            <button disabled={remainingDrinks !== 0} onClick={handleConfirmDistribution}>
-                                Confirm distribution
-                            </button>
-                        </>
-                    )}
-                </section>
-            )}
-
-
+              </div>
+            ))}
+          </div>
+          <div className="betting-footer club-panel">
+            <div>
+              <span className="eyebrow">Your race ticket</span>
+              <strong>
+                {currentPlayer
+                  ? Object.values(currentPlayer.bet).reduce(
+                      (sum, value) => sum + value,
+                      0,
+                    )
+                  : 0}{" "}
+                units wagered
+              </strong>
+              <small>
+                {betConfirmed
+                  ? "Wager placed. Waiting for the other players."
+                  : "Winners distribute twice their wager."}
+              </small>
+            </div>
+            <button
+              className="club-button"
+              disabled={betConfirmed || !currentPlayer}
+              onClick={() => {
+                socket.emit("betsPlaced", roomId);
+                setBetConfirmed(true);
+              }}
+            >
+              {" "}
+              {betConfirmed ? "Wager confirmed" : "Confirm wager"}{" "}
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 }
-
-export default Game;
