@@ -175,7 +175,9 @@
   background: #071a14d9;
 }
 .ace-preview form {
-  text-align: right;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .ace-preview h2 {
   margin: 8px 0 14px;

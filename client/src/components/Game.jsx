@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useLanguage, localizeError } from "../LanguageContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
@@ -16,6 +17,7 @@ const suits = [
 ];
 
 export default function Game() {
+  const { t } = useLanguage();
   const { roomId } = useParams();
   const navigate = useNavigate();
   const socket = useSocket();
@@ -233,34 +235,34 @@ export default function Game() {
 
   return (
     <div className="app-shell player-page">
-      <ClubHeader roomId={roomId} label={playerName || "Player view"} />
+      <ClubHeader roomId={roomId} label={playerName || t("Player view")} />
       <RaceToolbar
         phase={showResults ? 3 : isGameStarted ? 2 : 1}
         rounds={roundHistory}
       />
       <div className="player-page__intro">
-        <span className="eyebrow">The Ace Race / Your seat at the track</span>
+        <span className="eyebrow">{t("The Ace Race / Your seat at the track")}</span>
         <h1 className="page-title">
           {showResults
             ? postCeremony
-              ? "The final toast."
-              : "The result is in."
+              ? t("The final toast.")
+              : t("The result is in.")
             : ceremony
-              ? "The wagers are in."
+              ? t("The wagers are in.")
               : isGameStarted
-                ? "Eyes on the finish."
-                : "Back your horse."}
+                ? t("Eyes on the finish.")
+                : t("Back your horse.")}
         </h1>
         <p className="page-intro">
           {showResults
             ? postCeremony
-              ? "The host is calling each player for their final tally."
-              : "The winning wager pays double. Choose who receives your drinks."
+              ? t("The host is calling each player for their final tally.")
+              : t("The winning wager pays double. Choose who receives your drinks.")
             : ceremony
-              ? "The host is calling each player before the race begins."
+              ? t("The host is calling each player before the race begins.")
               : isGameStarted
-                ? "The cards decide the pace. Follow your horse down the course."
-                : "Choose your ace and set your wager before the gates open."}
+                ? t("The cards decide the pace. Follow your horse down the course.")
+                : t("Choose your ace and set your wager before the gates open.")}
         </p>
       </div>
       {!revealedWinner && postCeremony ? (
@@ -270,27 +272,30 @@ export default function Game() {
         >
           {isMyPostTurn && <TurnSpotlight />}
           <span className="eyebrow">
-            The winners' circle · Rider {postCeremony.currentIndex + 1} of{" "}
-            {postCeremony.players.length}
+            {t("{phase} · Rider {current} of {total}", {
+              phase: t("The winners' circle"),
+              current: postCeremony.currentIndex + 1,
+              total: postCeremony.players.length,
+            })}
           </span>
           <div className="player-ceremony__spotlight" key={activePostPlayer?.socketId}>
             <span>
-              {isMyPostTurn ? "Your final toast" : "Now in the spotlight"}{" "}
+              {isMyPostTurn ? t("Your final toast") : t("Now in the spotlight")}{" "}
               <PlayerBib number={activePostPlayer?.bib} />
             </span>
             <h2>{activePostPlayer?.username}</h2>
             <p>
               {isMyPostTurn
-                ? "Take the drinks given to you, then tell the host you're ready."
-                : "The next name is coming up."}
+                ? t("Take the drinks given to you, then tell the host you're ready.")
+                : t("The next name is coming up.")}
             </p>
             <FullAllowanceCallout recipient={activePostPlayer} />
           </div>
           <div className="player-ceremony__ticket">
-            <span className="eyebrow">Your final tally</span>
+            <span className="eyebrow">{t("Your final tally")}</span>
             <strong>
               <AnimatedTally total={myPostEntry?.total || 0} active={isMyPostTurn} />{" "}
-              <small>{myPostEntry?.total === 1 ? "sip" : "sips"}</small>
+              <small>{myPostEntry?.total === 1 ? t("sip") : t("sips")}</small>
             </strong>
             <p>
               <ToastSources sources={myPostEntry?.sources} active={isMyPostTurn} />
@@ -304,51 +309,60 @@ export default function Game() {
         >
           {isMyTurn && <TurnSpotlight />}
           <span className="eyebrow">
-            Before the off · Rider {ceremony.currentIndex + 1} of{" "}
-            {ceremony.players.length}
+            {t("{phase} · Rider {current} of {total}", {
+              phase: t("Before the off"),
+              current: ceremony.currentIndex + 1,
+              total: ceremony.players.length,
+            })}
           </span>
           <div className="player-ceremony__spotlight" key={ceremonyPlayer?.socketId}>
             <span>
-              {isMyTurn ? "Your turn in the spotlight" : "Now at the rail"}{" "}
+              {isMyTurn ? t("Your turn in the spotlight") : t("Now at the rail")}{" "}
               <PlayerBib number={ceremonyPlayer?.bib} />
             </span>
             <h2>{ceremonyPlayer?.username}</h2>
             <p>
               {isMyTurn
-                ? "Take your wager, then tell the host you're ready."
-                : "The host will call the next rider shortly."}
+                ? t("Take your wager, then tell the host you're ready.")
+                : t("The host will call the next rider shortly.")}
             </p>
           </div>
           <div className="player-ceremony__ticket">
-            <span className="eyebrow">Your race ticket</span>
+            <span className="eyebrow">{t("Your race ticket")}</span>
             <strong>
               {myCeremonyEntry?.total || 0}{" "}
-              <small>{myCeremonyEntry?.total === 1 ? "sip" : "sips"}</small>
+              <small>{myCeremonyEntry?.total === 1 ? t("sip") : t("sips")}</small>
             </strong>
             <p>
               {myCeremonyEntry
-                ? wagerDetails(myCeremonyEntry.bet)
-                : "Waiting for your wager…"}
+                ? wagerDetails(myCeremonyEntry.bet, t)
+                : t("Waiting for your wager…")}
             </p>
           </div>
         </section>
       ) : showResults ? (
         <section className="distribution-panel club-panel">
-          <span className="eyebrow">Official race result</span>
-          <h2>{raceResult.winner.replace("_ace", "")} wins.</h2>
+          <span className="eyebrow">{t("Official race result")}</span>
+          <h2>
+            {t("{suit} wins.", { suit: t(raceResult.winner.replace("_ace", "")) })}
+          </h2>
           {resultForCurrentPlayer && (
             <PlayerScorecard player={resultForCurrentPlayer} />
           )}
           {resultForCurrentPlayer &&
             (resultForCurrentPlayer.drinkAllowance === 0 ? (
               <div className="player-notice">
-                Your horse did not win this time. Stay tuned for the next race.
+                {t("Your horse did not win this time. Stay tuned for the next race.")}
               </div>
             ) : resultForCurrentPlayer.distributionConfirmed ? (
               <div className="player-notice">
                 {postDrinkingDone
-                  ? "The celebration is complete. Waiting for the host to start another race."
-                  : "Your distribution is confirmed. Waiting for the rest of the field."}
+                  ? t(
+                      "The celebration is complete. Waiting for the host to start another race.",
+                    )
+                  : t(
+                      "Your distribution is confirmed. Waiting for the rest of the field.",
+                    )}
               </div>
             ) : (
               <>
@@ -357,9 +371,9 @@ export default function Game() {
                   total={assignmentTotal}
                 />
                 {recipients.length ? (
-                  <h3>Choose your recipients</h3>
+                  <h3>{t("Choose your recipients")}</h3>
                 ) : (
-                  <p>No other players to give sips to.</p>
+                  <p>{t("No other players to give sips to.")}</p>
                 )}
                 <div className="distribution-list">
                   {recipients.map((player) => (
@@ -369,7 +383,9 @@ export default function Game() {
                       </span>
                       <div className="stepper">
                         <button
-                          aria-label={`Give one less to ${player.username}`}
+                          aria-label={t("Give one less to {name}", {
+                            name: player.username,
+                          })}
                           disabled={!distribution[player.socketId]}
                           onClick={() => changeDistribution(player.socketId, -1)}
                         >
@@ -377,7 +393,9 @@ export default function Game() {
                         </button>
                         <strong>{distribution[player.socketId] || 0}</strong>
                         <button
-                          aria-label={`Give one more to ${player.username}`}
+                          aria-label={t("Give one more to {name}", {
+                            name: player.username,
+                          })}
                           disabled={remainingDrinks <= 0}
                           onClick={() => changeDistribution(player.socketId, 1)}
                         >
@@ -388,14 +406,17 @@ export default function Game() {
                   ))}
                 </div>
                 {distributionError && (
-                  <p className="distribution-error">{distributionError}</p>
+                  <p className="distribution-error">
+                    {localizeError(distributionError, t)}
+                  </p>
                 )}
                 <button
                   className="club-button player-page__submit"
                   disabled={remainingDrinks !== 0}
                   onClick={confirmDistribution}
                 >
-                  Confirm distribution <span aria-hidden="true">→</span>
+                  {t("Confirm distribution") + " "}
+                  <span aria-hidden="true">→</span>
                 </button>
               </>
             ))}
@@ -403,17 +424,17 @@ export default function Game() {
       ) : isGameStarted ? (
         <>
           <div className="player-race-note club-panel">
-            <span className="eyebrow">Your wager</span>
+            <span className="eyebrow">{t("Your wager")}</span>
             <strong>
               {currentPlayer
                 ? suits
                     .filter(({ name }) => currentPlayer.bet[name] > 0)
                     .map(
                       ({ name, symbol }) =>
-                        `${symbol} ${name} × ${currentPlayer.bet[name]}`,
+                        `${symbol} ${t(name)} × ${currentPlayer.bet[name]}`,
                     )
-                    .join("  ·  ") || "No wager"
-                : "Loading…"}
+                    .join("  ·  ") || t("No wager")
+                : t("Loading…")}
             </strong>
           </div>
           <RaceTrack
@@ -433,8 +454,8 @@ export default function Game() {
         <div className="player-page__betting replay-stage">
           {isReplay && <ReplayDeal />}
           <div className="player-page__section-title">
-            <span className="eyebrow">01 / The betting ring</span>
-            <h2>Pick your contenders.</h2>
+            <span className="eyebrow">{t("01 / The betting ring")}</span>
+            <h2>{t("Pick your contenders.")}</h2>
           </div>
           <div className="betting-card-container">
             {suits.map(({ name, symbol }, index) => {
@@ -445,17 +466,21 @@ export default function Game() {
                   key={name}
                 >
                   <span className="betting-card__number">
-                    NO. {String(index + 1).padStart(2, "0")}
+                    {t("NO.") + " "}
+                    {String(index + 1).padStart(2, "0")}
                   </span>
-                  <img src={`/Images/${name}_ace.png`} alt={`${name} ace`} />
+                  <img
+                    src={`/Images/${name}_ace.png`}
+                    alt={t("Ace of {suit}", { suit: t(name) })}
+                  />
                   <div className="betting-card__bottom">
                     <span>
                       <i>{symbol}</i>
-                      {name}
+                      {t(name)}
                     </span>
                     <div className="stepper">
                       <button
-                        aria-label={`Decrease ${name} bet`}
+                        aria-label={t("Decrease {suit} bet", { suit: t(name) })}
                         disabled={betConfirmed || !wager}
                         onClick={() => handleBet(-1, name)}
                       >
@@ -465,7 +490,7 @@ export default function Game() {
                         {wager}
                       </strong>
                       <button
-                        aria-label={`Increase ${name} bet`}
+                        aria-label={t("Increase {suit} bet", { suit: t(name) })}
                         disabled={betConfirmed || !currentPlayer}
                         onClick={() => handleBet(1, name)}
                       >
@@ -496,14 +521,14 @@ export default function Game() {
           <div className="betting-footer club-panel">
             <details className="bet-slip">
               <summary>
-                <strong>{wagerTotal}</strong> {wagerTotal === 1 ? "sip" : "sips"}{" "}
-                wagered
+                <strong>{wagerTotal}</strong>{" "}
+                {wagerTotal === 1 ? t("sip wagered") : t("sips wagered")}
               </summary>
               <dl className="bet-slip__breakdown">
                 {suits.map(({ name, symbol }) => (
                   <div key={name}>
                     <dt>
-                      {symbol} {name}
+                      {symbol} {t(name)}
                     </dt>
                     <dd>{currentPlayer?.bet[name] ?? 0}</dd>
                   </div>
@@ -519,7 +544,7 @@ export default function Game() {
               }}
             >
               {" "}
-              {betConfirmed ? "Bets confirmed" : "Confirm bets"}{" "}
+              {betConfirmed ? t("Bets confirmed") : t("Confirm bets")}{" "}
               <span aria-hidden="true">→</span>
             </button>
           </div>

@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
+import { useLanguage, cardName } from "../LanguageContext";
 import { createPortal } from "react-dom";
 import "./RaceExtras.css";
 
 export function DrawFan({ cards }) {
+  const { t } = useLanguage();
   return (
     <div className="race-track__draw draw-fan">
-      <span>Recent draws</span>
+      <span>{t("Recent draws")}</span>
       <div className="draw-fan__cards">
         {cards
           .slice()
@@ -14,7 +16,7 @@ export function DrawFan({ cards }) {
             <img
               key={card}
               src={`/Images/${card}.png`}
-              alt={card.replace("_", " of ")}
+              alt={cardName(card, t)}
               style={{ "--fan-index": index }}
             />
           ))}
@@ -24,24 +26,45 @@ export function DrawFan({ cards }) {
 }
 
 export function RaceCall({ leaders, nearFinish, winner, paused }) {
-  const [call, setCall] = useState("");
-  const leaderNames = leaders.join(" and ");
+  const { t, language } = useLanguage();
+  const [call, setCall] = useState(null);
+  const leaderKey = leaders.join(",");
 
   useEffect(() => {
-    if (paused) return;
-    if (winner) setCall(`${winner.split("_")[0]} crosses the finish line!`);
-    else if (!leaderNames) setCall("The field is at the gates.");
-    else if (nearFinish) {
-      setCall(
-        `${leaderNames} ${leaders.length === 1 ? "is" : "are"} one length from the finish!`,
+    if (!paused) setCall({ leaderKey, nearFinish, winner });
+  }, [leaderKey, nearFinish, winner, paused]);
+
+  let message = "";
+  if (call?.winner) {
+    message = t("{suit} crosses the finish line!", {
+      suit: t(call.winner.split("_")[0]),
+    });
+  } else if (call && !call.leaderKey) {
+    message = t("The field is at the gates.");
+  } else if (call) {
+    const suits = call.leaderKey.split(",").map((suit) => t(suit));
+    if (suits.length === 1) {
+      message = t(
+        call.nearFinish
+          ? "{suit} is one length from the finish!"
+          : "{suit} takes the lead!",
+        { suit: suits[0] },
       );
-    } else if (leaders.length === 1) setCall(`${leaderNames} takes the lead!`);
-    else setCall(`${leaderNames} are neck and neck.`);
-  }, [leaderNames, leaders.length, nearFinish, winner, paused]);
+    } else {
+      message = t(
+        call.nearFinish
+          ? "{suits} are one length from the finish!"
+          : "{suits} are neck and neck.",
+        { suits: new Intl.ListFormat(language, { type: "conjunction" }).format(suits) },
+      );
+    }
+  }
 
   return (
     <div className="race-call" aria-live="polite">
-      <span key={call}>{call && call[0].toUpperCase() + call.slice(1)}</span>
+      <span key={message}>
+        {message.charAt(0).toLocaleUpperCase(language) + message.slice(1)}
+      </span>
     </div>
   );
 }
@@ -101,7 +124,8 @@ export function AnimatedTally({ total, active = true }) {
 }
 
 export function ToastSources({ sources = [], active = true }) {
-  if (!sources.length) return "No drinks assigned";
+  const { t } = useLanguage();
+  if (!sources.length) return t("No drinks assigned");
   return sources.map(({ giverId, username, amount }, index) => (
     <span
       key={giverId || index}
@@ -109,7 +133,7 @@ export function ToastSources({ sources = [], active = true }) {
       style={{ "--source-delay": `${660 + Math.min(index, 5) * 85}ms` }}
     >
       {index > 0 && " · "}
-      {amount} from {username}
+      {t("{amount} from {name}", { amount, name: username })}
     </span>
   ));
 }

@@ -69,6 +69,10 @@ a {
   margin: auto;
 }
 .club-header {
+  position: sticky;
+  top: 0;
+  z-index: 11;
+  background: var(--forest);
   height: 67px;
   border-bottom: 1px solid var(--line);
   display: flex;
@@ -118,6 +122,23 @@ a {
   border: 1px solid var(--line);
   padding: 9px 12px;
   color: var(--gold-light);
+}
+.language-select {
+  min-height: 36px;
+  max-width: 95px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 4px 6px;
+  color: var(--cream);
+  background: var(--forest);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+.language-select:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
 }
 .eyebrow {
   font-size: 11px;
@@ -211,13 +232,21 @@ a:focus-visible {
     margin-bottom: 32px;
   }
   .club-header__meta {
+    gap: 8px;
     font-size: 9px;
+  }
+  .club-header__meta strong {
+    padding-inline: 7px;
+    white-space: nowrap;
   }
   .club-header__meta span {
     display: none;
   }
   .club-brand strong {
     font-size: 12px;
+  }
+  .club-brand small {
+    letter-spacing: 0.12em;
   }
 }
 .home-hero {
@@ -322,7 +351,7 @@ a:focus-visible {
 .rules-overlay {
   position: fixed;
   inset: 0;
-  z-index: 10;
+  z-index: 12;
   background: #03130ecf;
   display: grid;
   place-items: center;

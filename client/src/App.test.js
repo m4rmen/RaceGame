@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import App from "./App";
 import { useSocket } from "./SocketContext";
 
@@ -12,6 +12,39 @@ jest.mock("./SocketContext", () => ({
   SocketProvider: ({ children }) => children,
   useSocket: jest.fn(),
 }));
+
+test("the client can change languages across screens and keeps the choice on reload", () => {
+  sessionStorage.clear();
+  localStorage.removeItem("aceRaceLanguage");
+  window.history.replaceState(null, "", "/");
+  useSocket.mockReturnValue({ emit: jest.fn() });
+
+  try {
+    const { unmount } = render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "How to play" }));
+    const rules = within(screen.getByRole("dialog"));
+    fireEvent.change(rules.getByRole("combobox", { name: "Language" }), {
+      target: { value: "fr" },
+    });
+    expect(document.documentElement).toHaveAttribute("lang", "fr");
+    fireEvent.click(rules.getByRole("button", { name: "Fermer les règles" }));
+    fireEvent.click(screen.getByRole("button", { name: "Rejoindre une course" }));
+
+    fireEvent.change(screen.getByLabelText("Ton nom"), { target: { value: "Ada" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "Langue" }), {
+      target: { value: "es" },
+    });
+    expect(screen.getByLabelText("Tu nombre")).toHaveValue("Ada");
+    expect(document.documentElement).toHaveAttribute("lang", "es");
+
+    unmount();
+    render(<App />);
+    expect(screen.getByRole("combobox", { name: "Idioma" })).toHaveValue("es");
+    expect(screen.getByRole("button", { name: "Entrar en el paddock" })).toBeEnabled();
+  } finally {
+    localStorage.removeItem("aceRaceLanguage");
+  }
+});
 
 test("the host can retry room creation and get an invite after a connection error", () => {
   sessionStorage.clear();
@@ -314,7 +347,7 @@ test.each(["game", "gamehost"])(
         "src",
         "/Images/back_of_card.png",
       );
-      const crampSlot = screen.getByLabelText("Link 1: clubs of 3");
+      const crampSlot = screen.getByLabelText("Link 1: 3 of clubs");
       expect(crampSlot).toHaveClass("is-flying");
       const destination = reveal.querySelector(".cramp-reveal__destination");
       expect(destination.style.getPropertyValue("--flight-x")).toBe("-240px");
@@ -374,7 +407,7 @@ test.each(["game", "gamehost"])(
 
       expect(track).toBeInTheDocument();
       expect(screen.getByText("Ace of hearts")).toBeInTheDocument();
-      expect(screen.getByAltText("hearts of king")).toBeInTheDocument();
+      expect(screen.getByAltText("king of hearts")).toBeInTheDocument();
       expect(screen.queryByText("Official race result")).not.toBeInTheDocument();
       expect(screen.queryByRole("heading", { name: "Ada" })).not.toBeInTheDocument();
 

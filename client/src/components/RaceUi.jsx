@@ -1,11 +1,13 @@
 import React from "react";
+import { useLanguage } from "../LanguageContext";
 import "./RaceUi.css";
 
 const phases = ["Lobby", "Bets", "Race", "Results"];
 
 export function PhaseStrip({ phase, ready }) {
+  const { t } = useLanguage();
   return (
-    <nav className="phase-strip" aria-label="Race phase">
+    <nav className="phase-strip" aria-label={t("Race phase")}>
       <ol>
         {phases.map((label, index) => (
           <li
@@ -13,7 +15,7 @@ export function PhaseStrip({ phase, ready }) {
             className={index < phase ? "is-complete" : undefined}
             aria-current={index === phase ? "step" : undefined}
           >
-            {label}
+            {t(label)}
           </li>
         ))}
       </ol>
@@ -23,18 +25,23 @@ export function PhaseStrip({ phase, ready }) {
 }
 
 export function PlayerBib({ number }) {
+  const { t } = useLanguage();
   if (!number) return null;
   return (
-    <span className="player-bib" aria-label={`Rider ${number}`}>
+    <span className="player-bib" aria-label={t("Rider {number}", { number })}>
       {String(number).padStart(2, "0")}
     </span>
   );
 }
 
 export function RoundHistory({ rounds = [] }) {
+  const { t } = useLanguage();
   return (
     <details className="round-history">
-      <summary>Round history{rounds.length ? ` (${rounds.length})` : ""}</summary>
+      <summary>
+        {t("Round history")}
+        {rounds.length ? ` (${rounds.length})` : ""}
+      </summary>
       <div className="round-history__drawer club-panel">
         {rounds.length ? (
           <ol>
@@ -44,7 +51,10 @@ export function RoundHistory({ rounds = [] }) {
               .map(({ number, winner, payouts }) => (
                 <li key={number}>
                   <strong>
-                    Round {number} · {winner?.split("_")[0]} wins
+                    {t("Round {number} · {winner} wins", {
+                      number,
+                      winner: winner ? t(winner.split("_")[0]) : "",
+                    })}
                   </strong>
                   <p>
                     {payouts.length
@@ -53,13 +63,13 @@ export function RoundHistory({ rounds = [] }) {
                             <PlayerBib number={bib} /> {username} · {amount}
                           </span>
                         ))
-                      : "No payouts"}
+                      : t("No payouts")}
                   </p>
                 </li>
               ))}
           </ol>
         ) : (
-          <p>Past races will appear here after replay.</p>
+          <p>{t("Past races will appear here after replay.")}</p>
         )}
       </div>
     </details>
@@ -79,6 +89,7 @@ export function RaceToolbar({ phase, ready, rounds, children }) {
 }
 
 export function PlayerScorecard({ player }) {
+  const { t } = useLanguage();
   const stats = [
     ["Wager", Object.values(player.bet ?? {}).reduce((sum, amount) => sum + amount, 0)],
     ["Payout", player.drinkAllowance],
@@ -86,10 +97,10 @@ export function PlayerScorecard({ player }) {
     ["Received", player.received ?? 0],
   ];
   return (
-    <dl className="player-scorecard" aria-label="Your race scorecard">
+    <dl className="player-scorecard" aria-label={t("Your race scorecard")}>
       {stats.map(([label, value]) => (
         <div key={label}>
-          <dt>{label}</dt>
+          <dt>{t(label)}</dt>
           <dd>{value}</dd>
         </div>
       ))}
@@ -98,19 +109,18 @@ export function PlayerScorecard({ player }) {
 }
 
 export function DistributionMeter({ assigned, total }) {
+  const { t } = useLanguage();
   return (
     <div className="distribution-meter">
       <div>
-        <strong>
-          {assigned} of {total} assigned
-        </strong>
-        <span>{total - assigned} left</span>
+        <strong>{t("{assigned} of {total} assigned", { assigned, total })}</strong>
+        <span>{t("{count} left", { count: total - assigned })}</span>
       </div>
       {total > 0 && (
         <div
           className="distribution-meter__track"
           role="progressbar"
-          aria-label="Sips assigned"
+          aria-label={t("Sips assigned")}
           aria-valuemin={0}
           aria-valuemax={total}
           aria-valuenow={assigned}

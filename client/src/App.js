@@ -7,22 +7,25 @@ import Game from "./components/Game";
 import GameHost from "./components/GameHost";
 
 import { SocketProvider } from "./SocketContext";
+import { LanguageProvider } from "./LanguageContext";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 const App = () => (
-  <SocketProvider>
-    <Router>
-      <Routes>
-        <Route exact path="/" element={<Home />} />
-        <Route exact path="/host" element={<Host />} />
-        <Route exact path="/join" element={<Join />} />
-        <Route path="/join/:roomId" element={<Join />} />
-        <Route exact path="/waitingroom/:roomId" element={<WaitingRoom />} />
-        <Route exact path="/game/:roomId" element={<Game />} />
-        <Route exact path="/gamehost/:roomId" element={<GameHost />} />
-      </Routes>
-    </Router>
-  </SocketProvider>
+  <LanguageProvider>
+    <SocketProvider>
+      <Router>
+        <Routes>
+          <Route exact path="/" element={<Home />} />
+          <Route exact path="/host" element={<Host />} />
+          <Route exact path="/join" element={<Join />} />
+          <Route path="/join/:roomId" element={<Join />} />
+          <Route exact path="/waitingroom/:roomId" element={<WaitingRoom />} />
+          <Route exact path="/game/:roomId" element={<Game />} />
+          <Route exact path="/gamehost/:roomId" element={<GameHost />} />
+        </Routes>
+      </Router>
+    </SocketProvider>
+  </LanguageProvider>
 );
 
 export default App;

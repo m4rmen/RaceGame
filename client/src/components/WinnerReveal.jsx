@@ -1,7 +1,9 @@
 import React, { useEffect } from "react";
+import { useLanguage } from "../LanguageContext";
 import "./WinnerReveal.css";
 
 export default function WinnerReveal({ winner, photoFinish, onComplete }) {
+  const { t } = useLanguage();
   const suit = winner.replace("_ace", "");
   const photoDelay = photoFinish ? 700 : 0;
 
@@ -14,7 +16,7 @@ export default function WinnerReveal({ winner, photoFinish, onComplete }) {
     <>
       {photoFinish && (
         <div className="photo-finish" role="status">
-          <span>Photo finish</span>
+          <span>{t("Photo finish")}</span>
         </div>
       )}
       <div
@@ -26,8 +28,8 @@ export default function WinnerReveal({ winner, photoFinish, onComplete }) {
           <img className="winner-reveal__back" src="/Images/back_of_card.png" alt="" />
           <img className="winner-reveal__face" src={`/Images/${winner}.png`} alt="" />
         </div>
-        <span className="eyebrow">Race winner</span>
-        <h2>Ace of {suit}</h2>
+        <span className="eyebrow">{t("Race winner")}</span>
+        <h2>{t("Ace of {suit}", { suit: t(suit) })}</h2>
       </div>
     </>
   );

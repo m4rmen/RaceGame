@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useLanguage, localizeError } from "../LanguageContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
@@ -22,6 +23,7 @@ const initialGrid = [
 ];
 
 export default function GameHost() {
+  const { t, language } = useLanguage();
   const { roomId } = useParams();
   const navigate = useNavigate();
   const socket = useSocket();
@@ -236,7 +238,7 @@ export default function GameHost() {
   const formatBets = (bet) =>
     Object.entries(bet)
       .filter(([, amount]) => amount > 0)
-      .map(([suit, amount]) => `${amount} ${suit}`)
+      .map(([suit, amount]) => `${amount} ${t(suit)}`)
       .join(" · ") || "—";
   const formatDistribution = (items) =>
     items.length
@@ -271,10 +273,17 @@ export default function GameHost() {
 
   return (
     <div className={`app-shell host-page${broadcast ? " host-page--broadcast" : ""}`}>
-      <ClubHeader roomId={roomId} label="The announcer’s box" />
+      <ClubHeader roomId={roomId} label={t("The announcer’s box")} />
       <RaceToolbar
         phase={phase}
-        ready={phase === 1 ? `${confirmedCount} of ${players.length} ready` : undefined}
+        ready={
+          phase === 1
+            ? t("{ready} of {total} ready", {
+                ready: confirmedCount,
+                total: players.length,
+              })
+            : undefined
+        }
         rounds={roundHistory}
       >
         <button
@@ -282,7 +291,7 @@ export default function GameHost() {
           className="race-toolbar__button"
           onClick={toggleBroadcast}
         >
-          {broadcast ? "Exit broadcast" : "Broadcast view"}
+          {broadcast ? t("Exit broadcast") : t("Broadcast view")}
         </button>
       </RaceToolbar>
       {(!revealedWinner && postCeremony) || ceremony ? (
@@ -291,18 +300,20 @@ export default function GameHost() {
             <h1 className="page-title">
               {!revealedWinner && postCeremony ? (
                 <>
-                  Now comes the <em>fun part.</em>
+                  {t("Now comes the") + " "}
+                  <em>{t("fun part.")}</em>
                 </>
               ) : (
                 <>
-                  Wagers <em>on the line.</em>
+                  {t("Wagers") + " "}
+                  <em>{t("on the line.")}</em>
                 </>
               )}
             </h1>
             <p className="page-intro">
               {!revealedWinner && postCeremony
-                ? "Time to drink the distributed bets"
-                : "Every rider takes their wager before the gates open."}
+                ? t("Time to drink the distributed bets")
+                : t("Every rider takes their wager before the gates open.")}
             </p>
           </div>
         </div>
@@ -326,8 +337,12 @@ export default function GameHost() {
         <section className="host-results club-panel">
           <div className="section-heading">
             <div>
-              <span className="eyebrow">Official race result</span>
-              <h2>{raceResult.winner.replace("_ace", "")} takes the crown.</h2>
+              <span className="eyebrow">{t("Official race result")}</span>
+              <h2>
+                {t("{suit} takes the crown.", {
+                  suit: t(raceResult.winner.replace("_ace", "")),
+                })}
+              </h2>
             </div>
             <span className="winner-suit">
               {
@@ -337,24 +352,29 @@ export default function GameHost() {
               }
             </span>
           </div>
-          <div className="distribution-legend" aria-label="Distribution status legend">
+          <div
+            className="distribution-legend"
+            aria-label={t("Distribution status legend")}
+          >
             <span>
-              <i className="legend-color legend-pending" /> Amber · in progress
+              <i className="legend-color legend-pending" />
+              {" " + t("Amber · in progress")}
             </span>
             <span>
-              <i className="legend-color legend-complete" /> Green · confirmed
+              <i className="legend-color legend-complete" />
+              {" " + t("Green · confirmed")}
             </span>
           </div>
           <div className="host-results__scroll">
             <table>
               <thead>
                 <tr>
-                  <th>Player</th>
-                  <th>Wager</th>
-                  <th>Payout</th>
-                  <th>Sent</th>
-                  <th>Received</th>
-                  <th>Status</th>
+                  <th>{t("Player")}</th>
+                  <th>{t("Wager")}</th>
+                  <th>{t("Payout")}</th>
+                  <th>{t("Sent")}</th>
+                  <th>{t("Received")}</th>
+                  <th>{t("Status")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -381,7 +401,7 @@ export default function GameHost() {
                     </td>
                     <td>{player.received ?? 0}</td>
                     <td>
-                      {player.distributionConfirmed ? "Confirmed" : "In progress"}
+                      {player.distributionConfirmed ? t("Confirmed") : t("In progress")}
                     </td>
                   </tr>
                 ))}
@@ -391,12 +411,15 @@ export default function GameHost() {
           <div className="host-results__footer">
             {postDrinkingDone ? (
               <button className="club-button" onClick={handleReplay}>
-                Run another race <span aria-hidden="true">↗</span>
+                {t("Run another race") + " "}
+                <span aria-hidden="true">↗</span>
               </button>
             ) : (
-              <p>Waiting for the winners to distribute their drinks…</p>
+              <p>{t("Waiting for the winners to distribute their drinks…")}</p>
             )}
-            {replayError && <p className="distribution-error">{replayError}</p>}
+            {replayError && (
+              <p className="distribution-error">{localizeError(replayError, t)}</p>
+            )}
           </div>
         </section>
       ) : (
@@ -405,13 +428,15 @@ export default function GameHost() {
             <div className="host-page__action club-panel">
               <div>
                 <span className="eyebrow">
-                  {isGameStarted ? "The next turn" : "Before the off"}
+                  {isGameStarted ? t("The next turn") : t("Before the off")}
                 </span>
-                <h3>{isGameStarted ? "Draw the next card" : "Waiting at the gates"}</h3>
+                <h3>
+                  {isGameStarted ? t("Draw the next card") : t("Waiting at the gates")}
+                </h3>
                 <p>
                   {isGameStarted
-                    ? "Reveal a card and watch its suit make a move."
-                    : "The race begins when every player confirms their wager."}
+                    ? t("Reveal a card and watch its suit make a move.")
+                    : t("The race begins when every player confirms their wager.")}
                 </p>
               </div>
               {isGameStarted && (
@@ -421,7 +446,7 @@ export default function GameHost() {
                     disabled={drawBlocked || autoFlip || autoDrawPending}
                     onClick={() => socket.emit("flipCard", roomId)}
                   >
-                    Flip next card
+                    {t("Flip next card")}
                   </button>
                   <button
                     type="button"
@@ -433,10 +458,11 @@ export default function GameHost() {
                       setAutoFlip((enabled) => !enabled);
                     }}
                   >
-                    Auto flip <span aria-hidden="true">{autoFlip ? "on" : "off"}</span>
+                    {t("Auto flip") + " "}
+                    <span aria-hidden="true">{autoFlip ? t("on") : t("off")}</span>
                   </button>
                   <label className="host-page__draw-interval">
-                    Draw interval
+                    {t("Draw interval")}
                     <select
                       value={autoFlipInterval}
                       onChange={(event) =>
@@ -445,7 +471,8 @@ export default function GameHost() {
                     >
                       {AUTO_FLIP_INTERVALS_MS.map((interval) => (
                         <option key={interval} value={interval}>
-                          {interval / 1000} {interval === 1000 ? "second" : "seconds"}
+                          {new Intl.NumberFormat(language).format(interval / 1000)}{" "}
+                          {interval === 1000 ? t("second") : t("seconds")}
                         </option>
                       ))}
                     </select>
@@ -454,7 +481,7 @@ export default function GameHost() {
               )}
               {autoFlipError && (
                 <small className="distribution-error" role="alert">
-                  {autoFlipError}
+                  {localizeError(autoFlipError, t)}
                 </small>
               )}
               <button
@@ -464,7 +491,7 @@ export default function GameHost() {
                 aria-controls="host-paddock"
                 onClick={() => setShowPaddock((shown) => !shown)}
               >
-                {showPaddock ? "Hide paddock" : "Show paddock"}
+                {showPaddock ? t("Hide paddock") : t("Show paddock")}
               </button>
             </div>
             <aside
@@ -472,9 +499,10 @@ export default function GameHost() {
               className="host-page__sidebar club-panel"
               hidden={!showPaddock}
             >
-              <span className="eyebrow">The paddock</span>
+              <span className="eyebrow">{t("The paddock")}</span>
               <h2>
-                Players <small>{players.length}</small>
+                {t("Players") + " "}
+                <small>{players.length}</small>
               </h2>
               <div className="host-player-list">
                 {players.length ? (
@@ -487,8 +515,8 @@ export default function GameHost() {
                           {isGameStarted
                             ? formatBets(player.bet)
                             : player.betConfirmed
-                              ? "Wager confirmed"
-                              : "Placing wager"}
+                              ? t("Wager confirmed")
+                              : t("Placing wager")}
                         </small>
                       </div>
                       <span
@@ -497,21 +525,26 @@ export default function GameHost() {
                       <button
                         className="remove-player-button"
                         type="button"
-                        aria-label={`Remove ${player.username} from the room`}
+                        aria-label={t("Remove {name} from the room", {
+                          name: player.username,
+                        })}
                         onClick={() =>
                           socket.emit("removePlayer", roomId, player.socketId)
                         }
                       >
-                        Remove
+                        {t("Remove")}
                       </button>
                     </div>
                   ))
                 ) : (
-                  <p className="club-muted">Share the room code to invite players.</p>
+                  <p className="club-muted">
+                    {t("Share the room code to invite players.")}
+                  </p>
                 )}
               </div>
               <div className="host-page__room">
-                ROOM CODE <strong>{roomId}</strong>
+                {t("ROOM CODE") + " "}
+                <strong>{roomId}</strong>
               </div>
             </aside>
           </div>

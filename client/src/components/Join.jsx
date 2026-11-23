@@ -1,10 +1,12 @@
 import React, { useState } from "react";
+import { useLanguage, localizeError } from "../LanguageContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import "./Join.css";
 
 export default function Join() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { roomId } = useParams();
   const invitedRoom = /^[0-9]{4}$/.test(roomId) ? roomId : null;
@@ -34,31 +36,31 @@ export default function Join() {
   };
   return (
     <div className="app-shell staging-page">
-      <ClubHeader roomId={invitedRoom} label="Join the field" />
+      <ClubHeader roomId={invitedRoom} label={t("Join the field")} />
       <main className="staging-layout">
         <div>
-          <span className="eyebrow">Your place at the track</span>
+          <span className="eyebrow">{t("Your place at the track")}</span>
           <h1 className="page-title">
-            Take your
+            {t("Take your")}
             <br />
-            place.
+            {t("place.")}
           </h1>
           <p className="page-intro">
             {invitedRoom
-              ? "Enter your name to take your place in the paddock."
-              : "Enter the code from your host and choose your racing name."}
+              ? t("Enter your name to take your place in the paddock.")
+              : t("Enter the code from your host and choose your racing name.")}
           </p>
           <div className="join-decoration" aria-hidden="true">
             ♠ <span>♥</span> ♦ ♣
           </div>
         </div>
         <form className="join-form club-panel" onSubmit={join}>
-          <span className="eyebrow">Enter the race</span>
-          <h2>Join a room</h2>
+          <span className="eyebrow">{t("Enter the race")}</span>
+          <h2>{t("Join a room")}</h2>
           {!invitedRoom && (
             <>
               <label className="club-label" htmlFor="roomCode">
-                Four-digit race code
+                {t("Four-digit race code")}
               </label>
               <input
                 className="club-input"
@@ -74,7 +76,7 @@ export default function Join() {
             </>
           )}
           <label className="club-label" htmlFor="userName">
-            Your name
+            {t("Your name")}
           </label>
           <input
             className="club-input"
@@ -83,15 +85,16 @@ export default function Join() {
             required
             value={userName}
             onChange={(event) => setUserName(event.target.value)}
-            placeholder="The name on your racecard"
+            placeholder={t("The name on your racecard")}
           />
           {error && (
             <p className="form-error" role="alert">
-              {error}
+              {localizeError(error, t)}
             </p>
           )}
           <button className="club-button" type="submit" disabled={!socket}>
-            Enter the paddock <span aria-hidden="true">→</span>
+            {t("Enter the paddock") + " "}
+            <span aria-hidden="true">→</span>
           </button>
         </form>
       </main>

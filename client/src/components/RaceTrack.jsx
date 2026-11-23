@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { LanguageSelect, useLanguage, cardName } from "../LanguageContext";
 import { createPortal } from "react-dom";
 import WinnerReveal from "./WinnerReveal";
 import { DrawFan, RaceCall } from "./RaceExtras";
@@ -10,8 +11,9 @@ const SETBACK_MS = 950;
 const symbols = { clubs: "♣", diamonds: "♦", hearts: "♥", spades: "♠" };
 
 function CrampCardSpotlight({ card, sourceCards, sourceIndex }) {
+  const { t } = useLanguage();
   const destination = useRef(null);
-  const [suit, rank] = card.split("_");
+  const [suit] = card.split("_");
 
   useLayoutEffect(() => {
     const target = destination.current;
@@ -36,7 +38,7 @@ function CrampCardSpotlight({ card, sourceCards, sourceIndex }) {
       role="status"
       style={{ "--cramp-reveal-duration": `${CRAMP_REVEAL_MS}ms` }}
     >
-      <span className="eyebrow cramp-reveal__caption">Cramp card revealed</span>
+      <span className="eyebrow cramp-reveal__caption">{t("Cramp card revealed")}</span>
       <div className="cramp-reveal__destination" ref={destination} aria-hidden="true">
         <div className="cramp-reveal__flight">
           <div className="cramp-reveal__flip">
@@ -46,10 +48,10 @@ function CrampCardSpotlight({ card, sourceCards, sourceIndex }) {
         </div>
       </div>
       <div className="cramp-reveal__caption">
-        <h2>
-          {rank} of {suit}
-        </h2>
-        <p>{suit} catches a cramp and drops back one length.</p>
+        <h2>{cardName(card, t)}</h2>
+        <p>
+          {t("{suit} catches a cramp and drops back one length.", { suit: t(suit) })}
+        </p>
       </div>
     </div>,
     document.body,
@@ -67,6 +69,7 @@ export default function RaceTrack({
   onCrampCardEnd,
   onWinnerRevealEnd,
 }) {
+  const { t } = useLanguage();
   const totalSteps = Math.max(grid.length - 1, 1);
   const drawnSuit = lastCard?.split("_")[0];
   const [retreatingCard, setRetreatingCard] = useState(null);
@@ -118,28 +121,29 @@ export default function RaceTrack({
     };
   }, [crampCard, onCrampCardEnd]);
   return (
-    <section className="race-track" aria-label="Live race positions">
+    <section className="race-track" aria-label={t("Live race positions")}>
       <div className="race-track__topline">
-        <span className="eyebrow">The racecourse · seven furlongs</span>
+        <span className="eyebrow">{t("The racecourse · seven furlongs")}</span>
         <span className="race-track__live">
-          <span /> Live track
+          <span />
+          {" " + t("Live track")}
         </span>
       </div>
       <div className="race-track__heading">
         <div>
-          <h2>And they’re off.</h2>
-          <p>Every drawn suit advances its horse one length.</p>
+          <h2>{t("And they’re off.")}</h2>
+          <p>{t("Every drawn suit advances its horse one length.")}</p>
         </div>
         {lastCard && recentDraws?.length ? (
           <DrawFan cards={recentDraws} />
         ) : (
           lastCard && (
             <div className="race-track__draw">
-              <span>Last draw</span>
+              <span>{t("Last draw")}</span>
               <img
                 key={lastCard}
                 src={`/Images/${lastCard}.png`}
-                alt={lastCard.replace("_", " of ")}
+                alt={cardName(lastCard, t)}
               />
             </div>
           )
@@ -155,9 +159,9 @@ export default function RaceTrack({
       )}
       <div className="race-track__course">
         <div className="race-track__scale">
-          <span>START</span>
-          <span>THE COURSE</span>
-          <span>FINISH</span>
+          <span>{t("START")}</span>
+          <span>{t("THE COURSE")}</span>
+          <span>{t("FINISH")}</span>
         </div>
         {field.map(({ suit, progress: settledProgress }) => {
           const setback = setbackSuit === suit;
@@ -168,16 +172,16 @@ export default function RaceTrack({
               <button
                 type="button"
                 className="race-lane__name race-lane__inspect"
-                aria-label={`View Ace of ${suit}`}
+                aria-label={t("View Ace of {suit}", { suit: t(suit) })}
                 onClick={() => {
                   setInspectedSuit(suit);
                   aceDialog.current.showModal();
                 }}
               >
                 <span className="race-lane__symbol">{symbols[suit]}</span>
-                <span>{suit}</span>
+                <span>{t(suit)}</span>
                 {picks.includes(suit) && (
-                  <small className="race-lane__pick">Your pick</small>
+                  <small className="race-lane__pick">{t("Your pick")}</small>
                 )}
               </button>
               <div
@@ -209,7 +213,7 @@ export default function RaceTrack({
                   {setback && isRetreating && (
                     <span
                       className="race-lane__setback"
-                      aria-label={`${suit} back one length`}
+                      aria-label={t("{suit} back one length", { suit: t(suit) })}
                     >
                       −1
                     </span>
@@ -228,12 +232,8 @@ export default function RaceTrack({
             </div>
           );
         })}
-        <div className="race-track__crampcards" aria-label="Track cramp cards">
-          <span className="race-track__cramp-label">
-            CRAMP
-            <br />
-            CARDS
-          </span>
+        <div className="race-track__crampcards" aria-label={t("Track cramp cards")}>
+          <span className="race-track__cramp-label">{t("CRAMP CARDS")}</span>
           <div className="race-track__cramp-line">
             {crampCards.map((card, index) => {
               const revealed = card !== "back_of_card";
@@ -248,8 +248,11 @@ export default function RaceTrack({
                     }}
                     aria-label={
                       revealed
-                        ? `Link ${index + 1}: ${card.replace("_", " of ")}`
-                        : `Link ${index + 1}: face down`
+                        ? t("Link {number}: {card}", {
+                            number: index + 1,
+                            card: cardName(card, t),
+                          })
+                        : t("Link {number}: face down", { number: index + 1 })
                     }
                   >
                     <div className="race-track__cramp-card-inner">
@@ -275,8 +278,8 @@ export default function RaceTrack({
         </div>
       </div>
       <div className="race-track__foot">
-        <span>FOUR HORSES</span>
-        <span>ONE FINISH LINE</span>
+        <span>{t("FOUR HORSES")}</span>
+        <span>{t("ONE FINISH LINE")}</span>
         <span>♠ ♥ ♦ ♣</span>
       </div>
       <dialog
@@ -285,16 +288,19 @@ export default function RaceTrack({
         ref={aceDialog}
       >
         <form method="dialog">
+          <LanguageSelect />
           <button className="race-toolbar__button" type="submit">
-            Close
+            {t("Close")}
           </button>
         </form>
         {inspectedSuit && (
           <>
-            <h2 id="ace-preview-title">Ace of {inspectedSuit}</h2>
+            <h2 id="ace-preview-title">
+              {t("Ace of {suit}", { suit: t(inspectedSuit) })}
+            </h2>
             <img
               src={`/Images/${inspectedSuit}_ace.png`}
-              alt={`Ace of ${inspectedSuit}`}
+              alt={t("Ace of {suit}", { suit: t(inspectedSuit) })}
             />
           </>
         )}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLanguage, localizeError } from "../LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import { useSocket } from "../SocketContext";
@@ -7,6 +8,7 @@ import { PlayerBib, RaceToolbar } from "./RaceUi";
 import "./Host.css";
 
 export default function Host() {
+  const { t } = useLanguage();
   const socket = useSocket();
   const navigate = useNavigate();
   const [code, setCode] = useState("");
@@ -97,22 +99,24 @@ export default function Host() {
 
   return (
     <div className="app-shell staging-page">
-      <ClubHeader roomId={code} label="Host the event" />
+      <ClubHeader roomId={code} label={t("Host the event")} />
       <RaceToolbar phase={0} rounds={roundHistory} />
       <main className="staging-layout host-layout">
         <header className="host-layout__intro">
-          <span className="eyebrow">The announcer’s box</span>
-          <h1 className="page-title">Gather your field.</h1>
+          <span className="eyebrow">{t("The announcer’s box")}</span>
+          <h1 className="page-title">{t("Gather your field.")}</h1>
           <p className="page-intro">
-            Invite players to the race. Once everyone has joined, open the betting ring.
+            {t(
+              "Invite players to the race. Once everyone has joined, open the betting ring.",
+            )}
           </p>
         </header>
         <div className="staging-code club-panel">
-          <span className="eyebrow">Invite players</span>
+          <span className="eyebrow">{t("Invite players")}</span>
           {roomError ? (
             <div>
               <p className="form-error" role="alert">
-                {roomError}
+                {localizeError(roomError, t)}
               </p>
               <button
                 className="club-button"
@@ -122,11 +126,11 @@ export default function Host() {
                   setRetry((attempt) => attempt + 1);
                 }}
               >
-                Retry connection
+                {t("Retry connection")}
               </button>
             </div>
           ) : (
-            !code && <small role="status">Connecting to the game server…</small>
+            !code && <small role="status">{t("Connecting to the game server…")}</small>
           )}
           {inviteUrl && (
             <div className="host-invite">
@@ -141,38 +145,39 @@ export default function Host() {
                 aria-hidden="true"
               />
               <div className="host-invite__details">
-                <small>Scan the QR code to join.</small>
+                <small>{t("Scan the QR code to join.")}</small>
                 <button type="button" className="club-button" onClick={copyInvite}>
-                  Copy invite link
+                  {t("Copy invite link")}
                 </button>
                 {copyStatus === "copied" && (
-                  <small role="status">Invite link copied</small>
+                  <small role="status">{t("Invite link copied")}</small>
                 )}
                 {copyStatus === "manual" && (
                   <input
                     className="club-input"
-                    aria-label="Invite link to copy"
+                    aria-label={t("Invite link to copy")}
                     value={inviteUrl}
                     readOnly
                     onFocus={(event) => event.currentTarget.select()}
                   />
                 )}
                 <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
-                  Open invite link
+                  {t("Open invite link")}
                 </a>
               </div>
             </div>
           )}
           {code && (
             <div className="host-invite__code">
-              <small>Race code for manual join</small> <strong>{code}</strong>
+              <small>{t("Race code for manual join")}</small> <strong>{code}</strong>
             </div>
           )}
         </div>
         <div className="staging-roster club-panel">
-          <span className="eyebrow">The paddock</span>
+          <span className="eyebrow">{t("The paddock")}</span>
           <h2>
-            Players in the field <small>{players.length}</small>
+            {t("Players in the field") + " "}
+            <small>{players.length}</small>
           </h2>
           <div className="staging-roster__list">
             {players.length ? (
@@ -180,19 +185,21 @@ export default function Host() {
                 <div key={player.socketId}>
                   <PlayerBib number={player.bib ?? index + 1} />
                   <strong>{player.username}</strong>
-                  <i>READY</i>
+                  <i>{t("READY")}</i>
                   <button
                     className="remove-player-button"
                     type="button"
-                    aria-label={`Remove ${player.username} from the room`}
+                    aria-label={t("Remove {name} from the room", {
+                      name: player.username,
+                    })}
                     onClick={() => socket.emit("removePlayer", code, player.socketId)}
                   >
-                    Remove
+                    {t("Remove")}
                   </button>
                 </div>
               ))
             ) : (
-              <p>No players yet. Your race is ready when they arrive.</p>
+              <p>{t("No players yet. Your race is ready when they arrive.")}</p>
             )}
           </div>
           <button
@@ -203,7 +210,8 @@ export default function Host() {
               navigate(`/gamehost/${code}`);
             }}
           >
-            Open betting <span aria-hidden="true">→</span>
+            {t("Open betting") + " "}
+            <span aria-hidden="true">→</span>
           </button>
         </div>
       </main>

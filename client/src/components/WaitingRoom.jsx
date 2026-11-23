@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLanguage } from "../LanguageContext";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
@@ -6,6 +7,7 @@ import { PhaseStrip, PlayerBib } from "./RaceUi";
 import "./WaitingRoom.css";
 
 export default function WaitingRoom() {
+  const { t } = useLanguage();
   const { roomId } = useParams();
   const socket = useSocket();
   const navigate = useNavigate();
@@ -55,34 +57,36 @@ export default function WaitingRoom() {
   if (!isReturningPlayer) return <Navigate to={invitePath} replace />;
   return (
     <div className="app-shell staging-page">
-      <ClubHeader roomId={roomId} label="The paddock" />
+      <ClubHeader roomId={roomId} label={t("The paddock")} />
       <PhaseStrip phase={0} />
       <main className="staging-layout">
         <div>
-          <span className="eyebrow">Before the off</span>
+          <span className="eyebrow">{t("Before the off")}</span>
           <h1 className="page-title">
-            The field
+            {t("The field")}
             <br />
-            assembles.
+            {t("assembles.")}
           </h1>
           <p className="page-intro">
-            You’re in. The host will open betting when everyone has arrived.
+            {t("You’re in. The host will open betting when everyone has arrived.")}
           </p>
           <div className="waiting-signal">
-            <span /> Awaiting the starter’s call
+            <span />
+            {" " + t("Awaiting the starter’s call")}
           </div>
         </div>
         <div className="staging-roster club-panel">
-          <span className="eyebrow">Race entrants</span>
+          <span className="eyebrow">{t("Race entrants")}</span>
           <h2>
-            In the paddock <small>{players.length}</small>
+            {t("In the paddock") + " "}
+            <small>{players.length}</small>
           </h2>
           <div className="staging-roster__list">
             {players.map((player, index) => (
               <div key={player.socketId}>
                 <PlayerBib number={player.bib ?? index + 1} />
                 <strong>{player.username}</strong>
-                <i>READY</i>
+                <i>{t("READY")}</i>
               </div>
             ))}
           </div>

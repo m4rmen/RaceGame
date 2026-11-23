@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { LanguageSelect, useLanguage } from "../LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 
 export default function Home() {
+  const { t } = useLanguage();
   const socket = useSocket();
   const navigate = useNavigate();
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -20,25 +22,28 @@ export default function Home() {
   }, [socket]);
   return (
     <div className="app-shell home-page">
-      <ClubHeader label="The racing club" />
+      <ClubHeader label={t("The racing club")} />
       <main className="home-hero">
         <div className="home-hero__copy">
-          <span className="eyebrow">A card game with a racing heart</span>
+          <span className="eyebrow">{t("A card game with a racing heart")}</span>
           <h1>
-            The thrill of
+            {t("The thrill of")}
             <br />
-            <em>the finish.</em>
+            <em>{t("the finish.")}</em>
           </h1>
-          <p>Place your wager. Pick your horse. Watch the aces race for the line.</p>
+          <p>
+            {t("Place your wager. Pick your horse. Watch the aces race for the line.")}
+          </p>
           <div className="home-hero__actions">
             <button className="club-button" onClick={() => navigate("/join")}>
-              Join a race <span aria-hidden="true">→</span>
+              {t("Join a race") + " "}
+              <span aria-hidden="true">→</span>
             </button>
             <button
               className="club-button club-button--outline"
               onClick={() => navigate("/host")}
             >
-              Host a race
+              {t("Host a race")}
             </button>
           </div>
         </div>
@@ -53,10 +58,15 @@ export default function Home() {
       </main>
       <div className="home-footer">
         <span>
-          FOUR HORSES <i>✦</i> SEVEN LENGTHS <i>✦</i> ONE WINNER
+          {t("FOUR HORSES") + " "}
+          <i>✦</i>
+          {" " + t("SEVEN LENGTHS") + " "}
+          <i>✦</i>
+          {" " + t("ONE WINNER")}
         </span>
         <button onClick={() => setRulesOpen(true)}>
-          How to play <span aria-hidden="true">↗</span>
+          {t("How to play") + " "}
+          <span aria-hidden="true">↗</span>
         </button>
       </div>
       {rulesOpen && (
@@ -72,32 +82,41 @@ export default function Home() {
             aria-labelledby="rules-title"
             onClick={(event) => event.stopPropagation()}
           >
+            <LanguageSelect />
             <button
               className="rules-dialog__close"
-              aria-label="Close rules"
+              aria-label={t("Close rules")}
               onClick={() => setRulesOpen(false)}
             >
               ×
             </button>
-            <span className="eyebrow">The racecard</span>
-            <h2 id="rules-title">How to play</h2>
+            <span className="eyebrow">{t("The racecard")}</span>
+            <h2 id="rules-title">{t("How to play")}</h2>
             <ol>
               <li>
-                <strong>Place your bets.</strong> Choose one or more of the four ace
-                horses and set the number of drink units on each. Drink your wager
-                upfront.
+                <strong>{t("Place your bets.")}</strong>
+                {" " +
+                  t(
+                    "Choose one or more of the four ace horses and set the number of drink units on each. Drink your wager upfront.",
+                  )}
               </li>
               <li>
-                <strong>Watch the race.</strong> The host draws cards. Each card
-                advances the ace of its suit. Cramp cards send a horse back one length.
+                <strong>{t("Watch the race.")}</strong>
+                {" " +
+                  t(
+                    "The host draws cards. Each card advances the ace of its suit. Cramp cards send a horse back one length.",
+                  )}
               </li>
               <li>
-                <strong>Share the winnings.</strong> Players who backed the winning
-                horse distribute twice their winning wager among the other players.
+                <strong>{t("Share the winnings.")}</strong>
+                {" " +
+                  t(
+                    "Players who backed the winning horse distribute twice their winning wager among the other players.",
+                  )}
               </li>
             </ol>
             <button className="club-button" onClick={() => setRulesOpen(false)}>
-              Back to the race
+              {t("Back to the race")}
             </button>
           </section>
         </div>
