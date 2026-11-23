@@ -234,11 +234,49 @@
   font-size: 16px;
 }
 .betting-footer {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
   margin-top: 18px;
+}
+.bet-slip summary {
+  cursor: pointer;
+  color: var(--cream);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.betting-footer .bet-slip summary strong {
+  display: inline;
+  margin: 0;
+  font:
+    700 19px Georgia,
+    serif;
+  color: var(--gold-light);
+}
+.bet-slip__breakdown {
+  position: absolute;
+  z-index: 1;
+  inset: auto 0 calc(100% + 4px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  padding: 12px;
+  margin: 0;
+  border: 1px solid var(--gold);
+  background: #102b23;
+  box-shadow: 0 8px 20px #0007;
+}
+.bet-slip__breakdown > div {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.bet-slip__breakdown dd {
+  margin: 0;
+  color: var(--gold-light);
 }
 .betting-footer strong,
 .betting-footer small {
@@ -340,6 +378,8 @@
     z-index: 3;
     background: #102b23;
     box-shadow: 0 -12px 30px #061710aa;
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   }
   .player-page__intro {
     margin-bottom: 24px;
@@ -360,11 +400,12 @@
     justify-content: space-between;
   }
   .betting-footer {
-    padding: 15px;
-    flex-wrap: wrap;
+    gap: 6px;
   }
   .betting-footer .club-button {
-    width: 100%;
+    min-height: 44px;
+    padding: 6px 10px;
+    font-size: 12px;
   }
   .player-race-note {
     align-items: start;

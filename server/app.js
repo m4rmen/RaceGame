@@ -106,11 +106,20 @@ function getDrinkAllowance(game, player) {
 }
 
 function getEndGameState(game) {
+  const received = new Map();
+  for (const player of game.players) {
+    for (const [recipientId, amount] of Object.entries(player.distributions)) {
+      received.set(recipientId, (received.get(recipientId) ?? 0) + amount);
+    }
+  }
   const players = game.players.map((player) => ({
     socketId: player.socketId,
     username: player.username,
+    bib: player.bib,
     bet: player.bet,
     drinkAllowance: getDrinkAllowance(game, player),
+    sent: Object.values(player.distributions).reduce((sum, amount) => sum + amount, 0),
+    received: received.get(player.socketId) ?? 0,
     distributions: Object.entries(player.distributions).map(
       ([recipientId, amount]) => ({
         recipientId,
@@ -136,6 +145,7 @@ function getDrinkingState(game) {
       return {
         socketId: player.socketId,
         username: player.username,
+        bib: player.bib,
         bet: { ...player.bet },
         total: Object.values(player.bet).reduce((sum, amount) => sum + amount, 0),
       };
@@ -161,6 +171,7 @@ function getPostDrinkingState(game) {
       return {
         socketId: playerId,
         username: player.username,
+        bib: player.bib,
         total: sources.reduce((sum, giver) => sum + giver.amount, 0),
         sources,
       };
@@ -188,6 +199,7 @@ function snapshot(game) {
     positions: game.positions,
     lastCard: game.lastCard,
     recentDraws: game.recentDraws ?? (game.lastCard ? [game.lastCard] : []),
+    roundHistory: game.roundHistory ?? [],
     ceremony: game.phase === "drinking" ? getDrinkingState(game) : null,
     postCeremony: game.phase === "postDrinking" ? getPostDrinkingState(game) : null,
     raceResult: game.gameWon ? getEndGameState(game) : null,
@@ -229,7 +241,10 @@ async function removeParticipant(roomId, targetId, requesterId, hostAction) {
     });
 
     if (game.players.length === 0) {
-      Object.assign(game, new Game(roomId, game.organizerId));
+      const freshLobby = new Game(roomId, game.organizerId);
+      freshLobby.roundHistory = game.roundHistory ?? [];
+      freshLobby.nextBib = game.nextBib;
+      Object.assign(game, freshLobby);
       return { reset: true, players: [] };
     }
     if (
@@ -453,18 +468,18 @@ io.on("connection", (socket) => {
         game.organizerId !== playerId ||
         game.phase !== "racing" ||
         game.gameWon ||
-        game.sideCardRevealUntil > Date.now()
+        (game.crampCardRevealUntil ?? game.sideCardRevealUntil) > Date.now()
       ) {
         return null;
       }
-      const previousSideCards = game.grid.map((row) => row[4]);
+      const previousCrampCards = game.grid.map((row) => row[4]);
       const card = game.flipCard();
-      const sideCard = game.grid.find(
+      const crampCard = game.grid.find(
         (row, index) =>
-          previousSideCards[index] === "back_of_card" && row[4] !== "back_of_card",
+          previousCrampCards[index] === "back_of_card" && row[4] !== "back_of_card",
       )?.[4];
-      // Cover clicks already in flight when a side card is revealed.
-      if (sideCard) game.sideCardRevealUntil = Date.now() + 3000;
+      // Cover clicks already in flight when a cramp card is revealed.
+      if (crampCard) game.crampCardRevealUntil = Date.now() + 3000;
       game.recentDraws = [
         card,
         ...(game.recentDraws ?? (game.lastCard ? [game.lastCard] : [])),
@@ -480,7 +495,7 @@ io.on("connection", (socket) => {
       const nextEvent = game.gameWon ? advancePostDrinkingIfReady(game) : null;
       return {
         card,
-        sideCard,
+        crampCard,
         recentDraws: game.recentDraws,
         grid: game.grid,
         positions: game.positions,
@@ -493,7 +508,7 @@ io.on("connection", (socket) => {
       return;
     }
     io.to(roomId).emit("cardFlipped", result.card, result.recentDraws);
-    io.to(roomId).emit("updateGrid", result.grid, result.sideCard ?? null);
+    io.to(roomId).emit("updateGrid", result.grid, result.crampCard ?? null);
     if (result.raceResult) io.to(roomId).emit("gameWon", result.raceResult);
     if (result.nextEvent)
       io.to(roomId).emit(result.nextEvent.name, result.nextEvent.data);
@@ -555,6 +570,23 @@ io.on("connection", (socket) => {
     const result = await gameStore.update(roomId, (game) => {
       if (game.organizerId !== playerId || game.phase !== "complete") return null;
       const nextGame = new Game(roomId, game.organizerId);
+      const history = game.roundHistory ?? [];
+      const result = getEndGameState(game);
+      nextGame.roundHistory = [
+        ...history.slice(-11),
+        {
+          number: (history.at(-1)?.number ?? 0) + 1,
+          winner: result.winner,
+          payouts: result.players
+            .filter((player) => player.drinkAllowance > 0)
+            .map(({ bib, username, drinkAllowance }) => ({
+              bib,
+              username,
+              amount: drinkAllowance,
+            })),
+        },
+      ];
+      nextGame.nextBib = game.nextBib;
       for (const player of game.players) {
         player.resetBet();
         nextGame.players.push(player);
@@ -567,6 +599,7 @@ io.on("connection", (socket) => {
         players: game.players,
         grid: game.grid,
         positions: game.positions,
+        roundHistory: game.roundHistory,
       };
     });
     if (!result) {

@@ -5,6 +5,7 @@ import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
 import { AnimatedTally, ReplayDeal, ToastSources, TurnSpotlight } from "./RaceExtras";
 import { FullAllowanceCallout, wagerDetails, wagerTier } from "./DrinkingCeremony";
+import { DistributionMeter, PlayerBib, PlayerScorecard, RaceToolbar } from "./RaceUi";
 import "./Game.css";
 
 const suits = [
@@ -27,8 +28,8 @@ export default function Game() {
   const [lastCard, setLastCard] = useState(null);
   const [raceResult, setRaceResult] = useState(null);
   const [revealedWinner, setRevealedWinner] = useState(null);
-  const [sideCard, setSideCard] = useState(null);
-  const finishSideCardReveal = useCallback(() => setSideCard(null), []);
+  const [crampCard, setCrampCard] = useState(null);
+  const finishCrampCardReveal = useCallback(() => setCrampCard(null), []);
   const finishWinnerReveal = useCallback(() => setRevealedWinner(null), []);
   const [ceremony, setCeremony] = useState(null);
   const [postCeremony, setPostCeremony] = useState(null);
@@ -37,9 +38,16 @@ export default function Game() {
   const [distributionError, setDistributionError] = useState("");
   const [isReplay, setIsReplay] = useState(false);
   const [chipLaunch, setChipLaunch] = useState(null);
+  const [roundHistory, setRoundHistory] = useState([]);
 
   useEffect(() => {
     if (!socket) return;
+    const onPlayers = (nextPlayers) => {
+      setPlayers(nextPlayers);
+      setCurrentPlayer(
+        nextPlayers.find((player) => player.socketId === playerId) || null,
+      );
+    };
     const applySnapshot = (state) => {
       if (!state) return;
       onPlayers(state.players);
@@ -52,12 +60,13 @@ export default function Game() {
         ["racing", "finished", "postDrinking", "complete"].includes(state.phase),
       );
       setCardGrid(state.grid);
-      setSideCard(null);
+      setCrampCard(null);
       setLastCard(state.lastCard);
       setCeremony(state.ceremony);
       setPostCeremony(state.postCeremony);
       setPostDrinkingDone(state.phase === "complete");
       setRaceResult(state.raceResult);
+      setRoundHistory(state.roundHistory ?? []);
       if (!state.raceResult) setRevealedWinner(null);
       const current = state.raceResult?.players.find(
         (player) => player.socketId === playerId,
@@ -80,12 +89,6 @@ export default function Game() {
     };
     socket.on("connect", resume);
     if (socket.connected) resume();
-    const onPlayers = (nextPlayers) => {
-      setPlayers(nextPlayers);
-      setCurrentPlayer(
-        nextPlayers.find((player) => player.socketId === playerId) || null,
-      );
-    };
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
       setIsReplay(false);
@@ -99,7 +102,8 @@ export default function Game() {
       setRaceResult(result);
       setDistribution({});
     };
-    const onNewGame = ({ players: nextPlayers, grid }) => {
+    const onNewGame = ({ players: nextPlayers, grid, roundHistory: history = [] }) => {
+      setRoundHistory(history);
       setIsReplay(true);
       setChipLaunch(null);
       onPlayers(nextPlayers);
@@ -107,7 +111,7 @@ export default function Game() {
       setIsGameStarted(false);
       setCardGrid(grid);
       setLastCard(null);
-      setSideCard(null);
+      setCrampCard(null);
       setRaceResult(null);
       setRevealedWinner(null);
       setCeremony(null);
@@ -126,9 +130,9 @@ export default function Game() {
     };
     socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
-    const onGrid = (grid, revealedSideCard = null) => {
+    const onGrid = (grid, revealedCrampCard = null) => {
       setCardGrid(grid);
-      setSideCard(revealedSideCard);
+      setCrampCard(revealedCrampCard);
     };
     socket.on("updateGrid", onGrid);
     socket.on("gameWon", onWon);
@@ -187,8 +191,12 @@ export default function Game() {
     (total, amount) => total + amount,
     0,
   );
-  const remainingDrinks =
-    (resultForCurrentPlayer?.drinkAllowance || 0) - distributedTotal;
+  const recipients =
+    raceResult?.players.filter((player) => player.socketId !== playerId) ?? [];
+  const assignmentTotal = recipients.length
+    ? (resultForCurrentPlayer?.drinkAllowance ?? 0)
+    : 0;
+  const remainingDrinks = assignmentTotal - distributedTotal;
   const changeDistribution = (recipientId, change) => {
     const currentAmount = distribution[recipientId] || 0;
     if (change > 0 && remainingDrinks <= 0) return;
@@ -218,10 +226,18 @@ export default function Game() {
     (player) => player.socketId === playerId,
   );
   const showResults = raceResult && !revealedWinner;
+  const wagerTotal = Object.values(currentPlayer?.bet ?? {}).reduce(
+    (sum, amount) => sum + amount,
+    0,
+  );
 
   return (
     <div className="app-shell player-page">
       <ClubHeader roomId={roomId} label={playerName || "Player view"} />
+      <RaceToolbar
+        phase={showResults ? 3 : isGameStarted ? 2 : 1}
+        rounds={roundHistory}
+      />
       <div className="player-page__intro">
         <span className="eyebrow">The Ace Race / Your seat at the track</span>
         <h1 className="page-title">
@@ -258,7 +274,10 @@ export default function Game() {
             {postCeremony.players.length}
           </span>
           <div className="player-ceremony__spotlight" key={activePostPlayer?.socketId}>
-            <span>{isMyPostTurn ? "Your final toast" : "Now in the spotlight"}</span>
+            <span>
+              {isMyPostTurn ? "Your final toast" : "Now in the spotlight"}{" "}
+              <PlayerBib number={activePostPlayer?.bib} />
+            </span>
             <h2>{activePostPlayer?.username}</h2>
             <p>
               {isMyPostTurn
@@ -289,7 +308,10 @@ export default function Game() {
             {ceremony.players.length}
           </span>
           <div className="player-ceremony__spotlight" key={ceremonyPlayer?.socketId}>
-            <span>{isMyTurn ? "Your turn in the spotlight" : "Now at the rail"}</span>
+            <span>
+              {isMyTurn ? "Your turn in the spotlight" : "Now at the rail"}{" "}
+              <PlayerBib number={ceremonyPlayer?.bib} />
+            </span>
             <h2>{ceremonyPlayer?.username}</h2>
             <p>
               {isMyTurn
@@ -314,6 +336,9 @@ export default function Game() {
         <section className="distribution-panel club-panel">
           <span className="eyebrow">Official race result</span>
           <h2>{raceResult.winner.replace("_ace", "")} wins.</h2>
+          {resultForCurrentPlayer && (
+            <PlayerScorecard player={resultForCurrentPlayer} />
+          )}
           {resultForCurrentPlayer &&
             (resultForCurrentPlayer.drinkAllowance === 0 ? (
               <div className="player-notice">
@@ -327,37 +352,40 @@ export default function Game() {
               </div>
             ) : (
               <>
-                <div className="distribution-panel__total">
-                  <span>Available to give</span>
-                  <strong>{resultForCurrentPlayer.drinkAllowance}</strong>
-                  <span>Remaining: {remainingDrinks}</span>
-                </div>
-                <h3>Choose your recipients</h3>
+                <DistributionMeter
+                  assigned={distributedTotal}
+                  total={assignmentTotal}
+                />
+                {recipients.length ? (
+                  <h3>Choose your recipients</h3>
+                ) : (
+                  <p>No other players to give sips to.</p>
+                )}
                 <div className="distribution-list">
-                  {raceResult.players
-                    .filter((player) => player.socketId !== playerId)
-                    .map((player) => (
-                      <div className="distribution-player" key={player.socketId}>
-                        <span>{player.username}</span>
-                        <div className="stepper">
-                          <button
-                            aria-label={`Give one less to ${player.username}`}
-                            disabled={!distribution[player.socketId]}
-                            onClick={() => changeDistribution(player.socketId, -1)}
-                          >
-                            −
-                          </button>
-                          <strong>{distribution[player.socketId] || 0}</strong>
-                          <button
-                            aria-label={`Give one more to ${player.username}`}
-                            disabled={remainingDrinks === 0}
-                            onClick={() => changeDistribution(player.socketId, 1)}
-                          >
-                            +
-                          </button>
-                        </div>
+                  {recipients.map((player) => (
+                    <div className="distribution-player" key={player.socketId}>
+                      <span>
+                        <PlayerBib number={player.bib} /> {player.username}
+                      </span>
+                      <div className="stepper">
+                        <button
+                          aria-label={`Give one less to ${player.username}`}
+                          disabled={!distribution[player.socketId]}
+                          onClick={() => changeDistribution(player.socketId, -1)}
+                        >
+                          −
+                        </button>
+                        <strong>{distribution[player.socketId] || 0}</strong>
+                        <button
+                          aria-label={`Give one more to ${player.username}`}
+                          disabled={remainingDrinks <= 0}
+                          onClick={() => changeDistribution(player.socketId, 1)}
+                        >
+                          +
+                        </button>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
                 {distributionError && (
                   <p className="distribution-error">{distributionError}</p>
@@ -396,8 +424,8 @@ export default function Game() {
               .filter(({ name }) => currentPlayer?.bet[name] > 0)
               .map(({ name }) => name)}
             winner={revealedWinner}
-            sideCard={sideCard}
-            onSideCardEnd={finishSideCardReveal}
+            crampCard={crampCard}
+            onCrampCardEnd={finishCrampCardReveal}
             onWinnerRevealEnd={finishWinnerReveal}
           />
         </>
@@ -466,23 +494,22 @@ export default function Game() {
             })}
           </div>
           <div className="betting-footer club-panel">
-            <div>
-              <span className="eyebrow">Your race ticket</span>
-              <strong>
-                {currentPlayer
-                  ? Object.values(currentPlayer.bet).reduce(
-                      (sum, value) => sum + value,
-                      0,
-                    )
-                  : 0}{" "}
-                units wagered
-              </strong>
-              <small>
-                {betConfirmed
-                  ? "Wager placed. Waiting for the other players."
-                  : "Winners distribute twice their wager."}
-              </small>
-            </div>
+            <details className="bet-slip">
+              <summary>
+                <strong>{wagerTotal}</strong> {wagerTotal === 1 ? "sip" : "sips"}{" "}
+                wagered
+              </summary>
+              <dl className="bet-slip__breakdown">
+                {suits.map(({ name, symbol }) => (
+                  <div key={name}>
+                    <dt>
+                      {symbol} {name}
+                    </dt>
+                    <dd>{currentPlayer?.bet[name] ?? 0}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
             <button
               className="club-button"
               disabled={betConfirmed || !currentPlayer}
@@ -492,7 +519,7 @@ export default function Game() {
               }}
             >
               {" "}
-              {betConfirmed ? "Wager confirmed" : "Confirm wager"}{" "}
+              {betConfirmed ? "Bets confirmed" : "Confirm bets"}{" "}
               <span aria-hidden="true">→</span>
             </button>
           </div>

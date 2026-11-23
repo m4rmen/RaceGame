@@ -1,5 +1,6 @@
 import React from "react";
 import { AnimatedTally, ToastSources } from "./RaceExtras";
+import { PlayerBib } from "./RaceUi";
 import "./DrinkingCeremony.css";
 
 const suitSymbols = { clubs: "♣", spades: "♠", hearts: "♥", diamonds: "♦" };
@@ -78,7 +79,8 @@ export default function DrinkingCeremony({
             {finale ? "The winners' circle" : "The pre-race ritual"}
           </span>
           <span className="ceremony-stage__turn">
-            RIDER {String(ceremony.currentIndex + 1).padStart(2, "0")} /{" "}
+            <PlayerBib number={active.bib ?? ceremony.currentIndex + 1} /> TURN{" "}
+            {String(ceremony.currentIndex + 1).padStart(2, "0")} /{" "}
             {String(ceremony.players.length).padStart(2, "0")}
           </span>
         </div>
@@ -175,7 +177,7 @@ export default function DrinkingCeremony({
               key={player.socketId}
             >
               <div>
-                <small>{String(index + 1).padStart(2, "0")}</small>
+                <PlayerBib number={player.bib ?? index + 1} />
                 <strong>{player.username}</strong>
                 <span>
                   {index < ceremony.currentIndex

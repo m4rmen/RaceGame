@@ -31,9 +31,16 @@ const positions = { First: "1st", Second: "2nd", Third: "3rd", Fourth: "4th" };
 class Game {
   static fromJSON(data) {
     const game = Object.assign(Object.create(Game.prototype), data);
-    game.players = data.players.map((player) =>
-      Object.assign(Object.create(Player.prototype), player),
+    let nextBib = Math.max(
+      data.nextBib ?? 1,
+      ...data.players.map((player) => (player.bib ?? 0) + 1),
     );
+    game.players = data.players.map((player) =>
+      Object.assign(Object.create(Player.prototype), player, {
+        bib: player.bib ?? nextBib++,
+      }),
+    );
+    game.nextBib = nextBib;
     game.sockets = Object.fromEntries(
       game.players.map((player) => [player.socketId, player]),
     );
@@ -65,6 +72,8 @@ class Game {
   winner = null;
   lastCard = null;
   recentDraws = [];
+  nextBib = 1;
+  roundHistory = [];
   sockets = {};
   positions = {
     clubs_ace: positions.Fourth,
@@ -235,6 +244,7 @@ class Game {
 
   addPlayer(username, socketId) {
     const newPlayer = new Player(username, socketId);
+    newPlayer.bib = this.nextBib++;
     this.players.push(newPlayer);
     this.sockets[socketId] = newPlayer;
   }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { QRCodeCanvas } from "qrcode.react";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
+import { PlayerBib, RaceToolbar } from "./RaceUi";
 import "./Host.css";
 
 export default function Host() {
@@ -12,6 +13,8 @@ export default function Host() {
   const [players, setPlayers] = useState([]);
   const [roomError, setRoomError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [copyStatus, setCopyStatus] = useState("");
+  const [roundHistory, setRoundHistory] = useState([]);
   useEffect(() => {
     if (!socket) return;
     let active = true;
@@ -34,6 +37,8 @@ export default function Host() {
           return;
         }
         setCode(roomCode);
+        setRoundHistory([]);
+        setCopyStatus("");
         sessionStorage.setItem("currentRoomId", roomCode);
         sessionStorage.setItem("raceRole", "host");
         socket.emit("getPlayers", roomCode, (inRoom) => setPlayers(inRoom || []));
@@ -60,6 +65,7 @@ export default function Host() {
         if (response.success) {
           setCode(roomCode);
           setPlayers(response.state.players);
+          setRoundHistory(response.state.roundHistory ?? []);
           if (response.state.phase !== "lobby") navigate(`/gamehost/${roomCode}`);
         } else create(roomCode);
       });
@@ -80,10 +86,19 @@ export default function Host() {
   const inviteUrl = code
     ? new URL(`/waitingroom/${code}`, window.location.origin).href
     : "";
+  const copyInvite = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("manual");
+    }
+  };
 
   return (
     <div className="app-shell staging-page">
       <ClubHeader roomId={code} label="Host the event" />
+      <RaceToolbar phase={0} rounds={roundHistory} />
       <main className="staging-layout host-layout">
         <header className="host-layout__intro">
           <span className="eyebrow">The announcer’s box</span>
@@ -93,8 +108,7 @@ export default function Host() {
           </p>
         </header>
         <div className="staging-code club-panel">
-          <span className="eyebrow">Your race code</span>
-          <strong>{code || "····"}</strong>
+          <span className="eyebrow">Invite players</span>
           {roomError ? (
             <div>
               <p className="form-error" role="alert">
@@ -127,11 +141,31 @@ export default function Host() {
                 aria-hidden="true"
               />
               <div className="host-invite__details">
-                <small>Scan to join with your phone, or enter the race code.</small>
+                <small>Scan the QR code to join.</small>
+                <button type="button" className="club-button" onClick={copyInvite}>
+                  Copy invite link
+                </button>
+                {copyStatus === "copied" && (
+                  <small role="status">Invite link copied</small>
+                )}
+                {copyStatus === "manual" && (
+                  <input
+                    className="club-input"
+                    aria-label="Invite link to copy"
+                    value={inviteUrl}
+                    readOnly
+                    onFocus={(event) => event.currentTarget.select()}
+                  />
+                )}
                 <a href={inviteUrl} target="_blank" rel="noopener noreferrer">
                   Open invite link
                 </a>
               </div>
+            </div>
+          )}
+          {code && (
+            <div className="host-invite__code">
+              <small>Race code for manual join</small> <strong>{code}</strong>
             </div>
           )}
         </div>
@@ -144,7 +178,7 @@ export default function Host() {
             {players.length ? (
               players.map((player, index) => (
                 <div key={player.socketId}>
-                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <PlayerBib number={player.bib ?? index + 1} />
                   <strong>{player.username}</strong>
                   <i>READY</i>
                   <button

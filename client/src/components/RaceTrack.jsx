@@ -5,11 +5,11 @@ import { DrawFan, RaceCall } from "./RaceExtras";
 import "./RaceTrack.css";
 
 const horses = ["clubs", "diamonds", "hearts", "spades"];
-const SIDE_REVEAL_MS = 2050;
+const CRAMP_REVEAL_MS = 2050;
 const SETBACK_MS = 950;
 const symbols = { clubs: "♣", diamonds: "♦", hearts: "♥", spades: "♠" };
 
-function SideCardSpotlight({ card, sourceCards, sourceIndex }) {
+function CrampCardSpotlight({ card, sourceCards, sourceIndex }) {
   const destination = useRef(null);
   const [suit, rank] = card.split("_");
 
@@ -32,24 +32,24 @@ function SideCardSpotlight({ card, sourceCards, sourceIndex }) {
 
   return createPortal(
     <div
-      className="side-reveal"
+      className="cramp-reveal"
       role="status"
-      style={{ "--side-reveal-duration": `${SIDE_REVEAL_MS}ms` }}
+      style={{ "--cramp-reveal-duration": `${CRAMP_REVEAL_MS}ms` }}
     >
-      <span className="eyebrow side-reveal__caption">Side card revealed</span>
-      <div className="side-reveal__destination" ref={destination} aria-hidden="true">
-        <div className="side-reveal__flight">
-          <div className="side-reveal__flip">
+      <span className="eyebrow cramp-reveal__caption">Cramp card revealed</span>
+      <div className="cramp-reveal__destination" ref={destination} aria-hidden="true">
+        <div className="cramp-reveal__flight">
+          <div className="cramp-reveal__flip">
             <img src="/Images/back_of_card.png" alt="" />
-            <img className="side-reveal__face" src={`/Images/${card}.png`} alt="" />
+            <img className="cramp-reveal__face" src={`/Images/${card}.png`} alt="" />
           </div>
         </div>
       </div>
-      <div className="side-reveal__caption">
+      <div className="cramp-reveal__caption">
         <h2>
           {rank} of {suit}
         </h2>
-        <p>{suit} drops back one length.</p>
+        <p>{suit} catches a cramp and drops back one length.</p>
       </div>
     </div>,
     document.body,
@@ -63,18 +63,20 @@ export default function RaceTrack({
   started = false,
   picks = [],
   winner,
-  sideCard,
-  onSideCardEnd,
+  crampCard,
+  onCrampCardEnd,
   onWinnerRevealEnd,
 }) {
   const totalSteps = Math.max(grid.length - 1, 1);
   const drawnSuit = lastCard?.split("_")[0];
   const [retreatingCard, setRetreatingCard] = useState(null);
   const sourceCards = useRef([]);
-  const setbackSuit = sideCard?.split("_")[0];
-  const isRetreating = Boolean(sideCard && retreatingCard === sideCard);
-  const showSideCard = Boolean(sideCard && !isRetreating);
-  const sideCards = grid
+  const aceDialog = useRef(null);
+  const [inspectedSuit, setInspectedSuit] = useState(null);
+  const setbackSuit = crampCard?.split("_")[0];
+  const isRetreating = Boolean(crampCard && retreatingCard === crampCard);
+  const showCrampCard = Boolean(crampCard && !isRetreating);
+  const crampCards = grid
     .slice(1)
     .reverse()
     .map((row) => row[4] || "back_of_card");
@@ -96,21 +98,25 @@ export default function RaceTrack({
   );
   const showGates = started && !lastCard;
 
+  useLayoutEffect(() => {
+    if ((crampCard || winner) && aceDialog.current.open) aceDialog.current.close();
+  }, [crampCard, winner]);
+
   useEffect(() => {
-    if (!sideCard) {
+    if (!crampCard) {
       setRetreatingCard(null);
       return;
     }
     const retreat = window.setTimeout(
-      () => setRetreatingCard(sideCard),
-      SIDE_REVEAL_MS,
+      () => setRetreatingCard(crampCard),
+      CRAMP_REVEAL_MS,
     );
-    const finish = window.setTimeout(onSideCardEnd, SIDE_REVEAL_MS + SETBACK_MS);
+    const finish = window.setTimeout(onCrampCardEnd, CRAMP_REVEAL_MS + SETBACK_MS);
     return () => {
       window.clearTimeout(retreat);
       window.clearTimeout(finish);
     };
-  }, [sideCard, onSideCardEnd]);
+  }, [crampCard, onCrampCardEnd]);
   return (
     <section className="race-track" aria-label="Live race positions">
       <div className="race-track__topline">
@@ -144,7 +150,7 @@ export default function RaceTrack({
           leaders={leaders}
           nearFinish={lead === totalSteps - 1}
           winner={winner}
-          paused={showSideCard}
+          paused={showCrampCard}
         />
       )}
       <div className="race-track__course">
@@ -155,18 +161,33 @@ export default function RaceTrack({
         </div>
         {field.map(({ suit, progress: settledProgress }) => {
           const setback = setbackSuit === suit;
-          const progress = settledProgress + (showSideCard && setback ? 1 : 0);
+          const progress = settledProgress + (showCrampCard && setback ? 1 : 0);
           const fraction = progress / totalSteps;
           return (
             <div className={`race-lane race-lane--${suit}`} key={suit}>
-              <div className="race-lane__name">
+              <button
+                type="button"
+                className="race-lane__name race-lane__inspect"
+                aria-label={`View Ace of ${suit}`}
+                onClick={() => {
+                  setInspectedSuit(suit);
+                  aceDialog.current.showModal();
+                }}
+              >
                 <span className="race-lane__symbol">{symbols[suit]}</span>
                 <span>{suit}</span>
                 {picks.includes(suit) && (
                   <small className="race-lane__pick">Your pick</small>
                 )}
-              </div>
-              <div className="race-lane__rail" style={{ "--race-progress": fraction }}>
+              </button>
+              <div
+                className="race-lane__rail"
+                style={{
+                  "--race-progress": fraction,
+                  "--finish-stretch": `${Math.min(2 / totalSteps, 1) * 100}%`,
+                }}
+              >
+                <span className="race-lane__finish-stretch" aria-hidden="true" />
                 {drawnSuit === suit && (
                   <span
                     className="race-lane__flash"
@@ -207,21 +228,21 @@ export default function RaceTrack({
             </div>
           );
         })}
-        <div className="race-track__sidecards" aria-label="Track side cards">
-          <span className="race-track__side-label">
-            SIDE
+        <div className="race-track__crampcards" aria-label="Track cramp cards">
+          <span className="race-track__cramp-label">
+            CRAMP
             <br />
             CARDS
           </span>
-          <div className="race-track__side-line">
-            {sideCards.map((card, index) => {
+          <div className="race-track__cramp-line">
+            {crampCards.map((card, index) => {
               const revealed = card !== "back_of_card";
-              const isFlying = showSideCard && card === sideCard;
+              const isFlying = showCrampCard && card === crampCard;
               return (
-                <div className="race-track__side-slot" key={index}>
+                <div className="race-track__cramp-slot" key={index}>
                   <span className="race-track__link-number">{index + 1}</span>
                   <div
-                    className={`race-track__side-card${revealed ? " is-revealed" : ""}${isFlying ? " is-flying" : ""}`}
+                    className={`race-track__cramp-card${revealed ? " is-revealed" : ""}${isFlying ? " is-flying" : ""}`}
                     ref={(node) => {
                       sourceCards.current[index] = node;
                     }}
@@ -231,14 +252,14 @@ export default function RaceTrack({
                         : `Link ${index + 1}: face down`
                     }
                   >
-                    <div className="race-track__side-card-inner">
+                    <div className="race-track__cramp-card-inner">
                       <img
-                        className="race-track__side-back"
+                        className="race-track__cramp-back"
                         src="/Images/back_of_card.png"
                         alt=""
                       />
                       <img
-                        className="race-track__side-front"
+                        className="race-track__cramp-front"
                         src={`/Images/${card}.png`}
                         alt=""
                       />
@@ -248,7 +269,7 @@ export default function RaceTrack({
               );
             })}
           </div>
-          <span className="race-track__side-end" aria-hidden="true">
+          <span className="race-track__cramp-end" aria-hidden="true">
             ↗
           </span>
         </div>
@@ -258,15 +279,35 @@ export default function RaceTrack({
         <span>ONE FINISH LINE</span>
         <span>♠ ♥ ♦ ♣</span>
       </div>
-      {showSideCard && (
-        <SideCardSpotlight
-          key={sideCard}
-          card={sideCard}
+      <dialog
+        className="ace-preview club-panel"
+        aria-labelledby="ace-preview-title"
+        ref={aceDialog}
+      >
+        <form method="dialog">
+          <button className="race-toolbar__button" type="submit">
+            Close
+          </button>
+        </form>
+        {inspectedSuit && (
+          <>
+            <h2 id="ace-preview-title">Ace of {inspectedSuit}</h2>
+            <img
+              src={`/Images/${inspectedSuit}_ace.png`}
+              alt={`Ace of ${inspectedSuit}`}
+            />
+          </>
+        )}
+      </dialog>
+      {showCrampCard && (
+        <CrampCardSpotlight
+          key={crampCard}
+          card={crampCard}
           sourceCards={sourceCards}
-          sourceIndex={sideCards.indexOf(sideCard)}
+          sourceIndex={crampCards.indexOf(crampCard)}
         />
       )}
-      {winner && !sideCard && (
+      {winner && !crampCard && (
         <WinnerReveal
           key={winner}
           winner={winner}

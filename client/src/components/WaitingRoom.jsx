@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
+import { PhaseStrip, PlayerBib } from "./RaceUi";
 import "./WaitingRoom.css";
 
 export default function WaitingRoom() {
@@ -55,6 +56,7 @@ export default function WaitingRoom() {
   return (
     <div className="app-shell staging-page">
       <ClubHeader roomId={roomId} label="The paddock" />
+      <PhaseStrip phase={0} />
       <main className="staging-layout">
         <div>
           <span className="eyebrow">Before the off</span>
@@ -78,7 +80,7 @@ export default function WaitingRoom() {
           <div className="staging-roster__list">
             {players.map((player, index) => (
               <div key={player.socketId}>
-                <span>{String(index + 1).padStart(2, "0")}</span>
+                <PlayerBib number={player.bib ?? index + 1} />
                 <strong>{player.username}</strong>
                 <i>READY</i>
               </div>

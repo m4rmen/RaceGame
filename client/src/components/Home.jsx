@@ -89,7 +89,7 @@ export default function Home() {
               </li>
               <li>
                 <strong>Watch the race.</strong> The host draws cards. Each card
-                advances the ace of its suit. Side cards may send a horse back.
+                advances the ace of its suit. Cramp cards send a horse back one length.
               </li>
               <li>
                 <strong>Share the winnings.</strong> Players who backed the winning

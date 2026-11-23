@@ -107,6 +107,8 @@ test("the player sees their chips, backed lane, and ceremony cue", () => {
     expect(
       document.querySelector(".betting-card--clubs .betting-chip-stack"),
     ).toBeInTheDocument();
+    expect(screen.getByText("sip wagered", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm bets" })).toBeEnabled();
 
     const players = [bea, ada];
     act(() => listeners.get("drinkingCeremony")({ players, currentIndex: 0 }));
@@ -143,6 +145,12 @@ test("the host gets live race calls, a close finish, and a fresh deck on replay"
     const grid = Array.from({ length: 8 }, () => []);
     grid[7] = ["clubs_ace", "diamonds_ace", "hearts_ace", "spades_ace"];
     render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Broadcast view" }));
+    expect(document.querySelector(".host-page--broadcast")).toBeInTheDocument();
+    const paddock = document.getElementById("host-paddock");
+    expect(paddock).toHaveAttribute("hidden");
+    fireEvent.click(screen.getByRole("button", { name: "Show paddock" }));
+    expect(paddock).not.toHaveAttribute("hidden");
     act(() => listeners.get("startGame")({ grid }));
     expect(document.querySelectorAll(".starting-gate")).toHaveLength(4);
 
@@ -166,21 +174,101 @@ test("the host gets live race calls, a close finish, and a fresh deck on replay"
     expect(screen.getByText("Photo finish")).toBeInTheDocument();
     act(() => jest.advanceTimersByTime(4100));
     expect(screen.getByText("Official race result")).toBeInTheDocument();
-    act(() => listeners.get("newGame")({ players: [], grid }));
+    act(() =>
+      listeners.get("newGame")({
+        players: [],
+        grid,
+        roundHistory: [{ number: 1, winner: "clubs_ace", payouts: [] }],
+      }),
+    );
     expect(document.querySelectorAll(".replay-deal img")).toHaveLength(4);
     expect(screen.queryByText("Recent draws")).not.toBeInTheDocument();
+    expect(screen.getByText("Round history (1)")).toBeInTheDocument();
+    expect(screen.getByText("Round 1 · clubs wins")).toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("auto flip waits for acknowledgments and the cramp animation, then stops on a win", () => {
+  jest.useFakeTimers();
+  try {
+    window.history.replaceState(null, "", "/gamehost/3975");
+    const listeners = new Map();
+    const emit = jest.fn();
+    const socket = {
+      connected: false,
+      on: (event, listener) => listeners.set(event, listener),
+      off: jest.fn(),
+      timeout: () => ({ emit }),
+    };
+    useSocket.mockReturnValue(socket);
+    render(<App />);
+    socket.connected = true;
+    const grid = Array.from({ length: 8 }, () => []);
+    grid[7] = ["clubs_ace", "", "", "", "back_of_card"];
+    act(() => listeners.get("startGame")({ grid }));
+    const auto = screen.getByRole("button", { name: "Auto flip" });
+    const interval = screen.getByRole("combobox", { name: "Draw interval" });
+    expect(interval).toHaveValue("1000");
+    fireEvent.change(interval, { target: { value: "1500" } });
+
+    fireEvent.click(auto);
+    act(() => jest.advanceTimersByTime(500));
+    fireEvent.click(auto);
+    act(() => jest.advanceTimersByTime(1500));
+    expect(emit).not.toHaveBeenCalled();
+
+    fireEvent.click(auto);
+    expect(auto).toHaveAttribute("aria-pressed", "true");
+    act(() => jest.advanceTimersByTime(1499));
+    expect(emit).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(1));
+    act(() => jest.advanceTimersByTime(2200));
+    expect(emit).toHaveBeenCalledTimes(1);
+    act(() => {
+      listeners.get("cardFlipped")("hearts_2");
+      listeners.get("updateGrid")(grid, null);
+      emit.mock.calls[0][2](null, { success: true });
+    });
+    act(() => jest.advanceTimersByTime(1500));
+    expect(emit).toHaveBeenCalledTimes(2);
+
+    const crampGrid = [...grid];
+    crampGrid[7] = ["clubs_ace", "", "", "", "clubs_3"];
+    act(() => {
+      listeners.get("cardFlipped")("clubs_2");
+      listeners.get("updateGrid")(crampGrid, "clubs_3");
+      emit.mock.calls[1][2](null, { success: true });
+    });
+    expect(screen.getByText("Cramp card revealed")).toBeInTheDocument();
+    fireEvent.change(interval, { target: { value: "2000" } });
+    act(() => jest.advanceTimersByTime(3000));
+    expect(emit).toHaveBeenCalledTimes(2);
+    act(() => jest.advanceTimersByTime(1999));
+    expect(emit).toHaveBeenCalledTimes(2);
+    act(() => jest.advanceTimersByTime(1));
+    expect(emit).toHaveBeenCalledTimes(3);
+
+    act(() => {
+      listeners.get("gameWon")({ winner: "clubs_ace", players: [] });
+      emit.mock.calls[2][2](null, { success: true });
+    });
+    expect(auto).toHaveAttribute("aria-pressed", "false");
+    act(() => jest.advanceTimersByTime(6000));
+    expect(emit).toHaveBeenCalledTimes(3);
   } finally {
     jest.useRealTimers();
   }
 });
 
 test.each(["game", "gamehost"])(
-  "the %s view shows the side card before the affected ace falls back",
+  "the %s view shows the cramp card before the affected ace falls back",
   (route) => {
     jest.useFakeTimers();
     const measure = jest.spyOn(HTMLElement.prototype, "getBoundingClientRect");
     measure.mockImplementation(function () {
-      if (this.classList.contains("side-reveal__destination")) {
+      if (this.classList.contains("cramp-reveal__destination")) {
         return { left: 200, top: 100, width: 240, height: 360 };
       }
       return { left: 60, top: 400, width: 40, height: 60 };
@@ -222,13 +310,13 @@ test.each(["game", "gamehost"])(
       });
       const reveal = screen.getByRole("status");
       expect(reveal).toHaveTextContent("3 of clubs");
-      expect(reveal.querySelector(".side-reveal__flip img")).toHaveAttribute(
+      expect(reveal.querySelector(".cramp-reveal__flip img")).toHaveAttribute(
         "src",
         "/Images/back_of_card.png",
       );
-      const sideSlot = screen.getByLabelText("Link 1: clubs of 3");
-      expect(sideSlot).toHaveClass("is-flying");
-      const destination = reveal.querySelector(".side-reveal__destination");
+      const crampSlot = screen.getByLabelText("Link 1: clubs of 3");
+      expect(crampSlot).toHaveClass("is-flying");
+      const destination = reveal.querySelector(".cramp-reveal__destination");
       expect(destination.style.getPropertyValue("--flight-x")).toBe("-240px");
       expect(destination.style.getPropertyValue("--flight-y")).toBe("150px");
       expect(Number(destination.style.getPropertyValue("--flight-scale"))).toBeCloseTo(
@@ -241,7 +329,7 @@ test.each(["game", "gamehost"])(
 
       act(() => jest.advanceTimersByTime(2050));
       expect(screen.queryByRole("status")).not.toBeInTheDocument();
-      expect(sideSlot).not.toHaveClass("is-flying");
+      expect(crampSlot).not.toHaveClass("is-flying");
       expect(screen.getByLabelText("clubs back one length")).toHaveTextContent("−1");
       expect(runner).toHaveStyle({ left: "0%" });
 

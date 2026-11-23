@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const Game = require("./game");
 
-test("a side card flips only after every horse clears its link", () => {
+test("a cramp card flips only after every horse clears its link", () => {
   const game = new Game("test-room", "host");
   game.crampCards[6] = "clubs_3";
 

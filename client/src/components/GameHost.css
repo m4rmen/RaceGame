@@ -154,6 +154,106 @@
 .host-page__action .club-button {
   white-space: nowrap;
 }
+.host-page__draw-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.host-page__draw-controls .club-button {
+  min-height: 44px;
+  gap: 4px;
+  padding: 8px 9px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+}
+.host-page__draw-controls .auto-flip-toggle[aria-pressed="true"] {
+  background: #d9bf8625;
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+}
+.host-page__draw-interval {
+  display: flex;
+  flex: 1 0 100%;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.host-page__draw-interval select {
+  padding: 7px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--forest);
+  color: var(--cream);
+  font: inherit;
+}
+.host-page__draw-interval select:focus-visible {
+  outline: 2px solid var(--gold-light);
+  outline-offset: 2px;
+}
+.host-page--broadcast .host-page__draw-interval {
+  flex-basis: auto;
+}
+.host-page__sidebar[hidden] {
+  display: none;
+}
+.host-page--broadcast {
+  max-width: none;
+  padding: 8px clamp(12px, 3vw, 36px) 24px;
+}
+.host-page--broadcast .club-header {
+  height: 44px;
+  margin-bottom: 0;
+}
+.host-page--broadcast .host-page__layout {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "controls" "track" "paddock";
+  gap: 10px;
+}
+.host-page--broadcast .host-page__rail {
+  display: contents;
+}
+.host-page--broadcast .host-page__action {
+  grid-area: controls;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 7px 12px;
+}
+.host-page--broadcast .host-page__action h3 {
+  margin: 2px 0 0;
+  font-size: 19px;
+}
+.host-page--broadcast .host-page__action p {
+  display: none;
+}
+.host-page--broadcast .host-page__sidebar {
+  grid-area: paddock;
+}
+.host-page--broadcast .race-track {
+  --runner-width: clamp(44px, 6.5dvh, 76px);
+  padding: 12px clamp(12px, 3vw, 32px);
+}
+.host-page--broadcast .race-track__heading {
+  padding-block: 6px 8px;
+}
+.host-page--broadcast .race-track__course {
+  padding-block: 10px;
+}
+.host-page--broadcast .race-lane {
+  min-height: calc(var(--runner-height) + 12px);
+}
+.host-page--broadcast .draw-fan__cards {
+  height: 70px;
+}
+.host-page--broadcast .draw-fan__cards img {
+  width: 44px;
+  height: 62px;
+}
+.host-page--broadcast .race-track__foot {
+  display: none;
+}
 .host-page__sidebar h2 {
   font-size: 34px;
   margin: 12px 0 2px;
@@ -314,11 +414,18 @@
   .host-page__layout {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      "rail"
-      "track";
+      "controls"
+      "track"
+      "paddock";
+  }
+  .host-page__rail {
+    display: contents;
+  }
+  .host-page__action {
+    grid-area: controls;
   }
   .host-page__sidebar {
-    display: none;
+    grid-area: paddock;
   }
 }
 @media (max-width: 600px) {
