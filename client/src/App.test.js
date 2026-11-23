@@ -84,6 +84,96 @@ test("a new player can open a room invite and join with only their name", async 
   expect(window.location.pathname).toBe("/waitingroom/3975");
 });
 
+test("the player sees their chips, backed lane, and ceremony cue", () => {
+  jest.useFakeTimers();
+  try {
+    window.history.replaceState(null, "", "/game/3975");
+    const listeners = new Map();
+    useSocket.mockReturnValue({
+      auth: { sessionId: "ada" },
+      connected: false,
+      emit: jest.fn(),
+      on: (event, listener) => listeners.set(event, listener),
+      off: jest.fn(),
+    });
+    render(<App />);
+    const ada = { socketId: "ada", username: "Ada", bet: {}, total: 3, sources: [] };
+    const bea = { ...ada, socketId: "bea", username: "Bea" };
+    act(() => listeners.get("updatePlayers")([ada, bea]));
+    fireEvent.click(screen.getByRole("button", { name: "Increase clubs bet" }));
+    expect(
+      document.querySelector(".betting-card--clubs .betting-chip"),
+    ).toBeInTheDocument();
+    expect(
+      document.querySelector(".betting-card--clubs .betting-chip-stack"),
+    ).toBeInTheDocument();
+
+    const players = [bea, ada];
+    act(() => listeners.get("drinkingCeremony")({ players, currentIndex: 0 }));
+    expect(document.querySelector(".turn-spotlight")).not.toBeInTheDocument();
+    act(() => listeners.get("drinkingCeremony")({ players, currentIndex: 1 }));
+    expect(document.querySelector(".turn-spotlight")).toBeInTheDocument();
+    act(() => listeners.get("startGame")({ grid: [] }));
+    expect(screen.getByText("Your pick").closest(".race-lane")).toHaveClass(
+      "race-lane--clubs",
+    );
+
+    act(() => listeners.get("postDrinkingCeremony")({ players, currentIndex: 1 }));
+    const tally = document.querySelector(
+      ".player-ceremony__ticket strong [aria-hidden]",
+    );
+    expect(tally).toHaveTextContent("0");
+    act(() => jest.advanceTimersByTime(700));
+    expect(tally).toHaveTextContent("3");
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("the host gets live race calls, a close finish, and a fresh deck on replay", () => {
+  jest.useFakeTimers();
+  try {
+    window.history.replaceState(null, "", "/gamehost/3975");
+    const listeners = new Map();
+    useSocket.mockReturnValue({
+      connected: false,
+      on: (event, listener) => listeners.set(event, listener),
+      off: jest.fn(),
+    });
+    const grid = Array.from({ length: 8 }, () => []);
+    grid[7] = ["clubs_ace", "diamonds_ace", "hearts_ace", "spades_ace"];
+    render(<App />);
+    act(() => listeners.get("startGame")({ grid }));
+    expect(document.querySelectorAll(".starting-gate")).toHaveLength(4);
+
+    const nearFinish = [...grid];
+    nearFinish[1] = ["clubs_ace", "diamonds_ace"];
+    nearFinish[7] = ["", "", "hearts_ace", "spades_ace"];
+    act(() => {
+      listeners.get("cardFlipped")("clubs_2", ["clubs_2", "diamonds_2", "clubs_3"]);
+      listeners.get("updateGrid")(nearFinish);
+    });
+    expect(screen.getByText(/one length from the finish/)).toBeInTheDocument();
+    expect(document.querySelectorAll(".draw-fan img")).toHaveLength(3);
+
+    const finished = [...nearFinish];
+    finished[0] = ["clubs_ace"];
+    finished[1] = ["", "diamonds_ace"];
+    act(() => {
+      listeners.get("updateGrid")(finished);
+      listeners.get("gameWon")({ winner: "clubs_ace", players: [] });
+    });
+    expect(screen.getByText("Photo finish")).toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(4100));
+    expect(screen.getByText("Official race result")).toBeInTheDocument();
+    act(() => listeners.get("newGame")({ players: [], grid }));
+    expect(document.querySelectorAll(".replay-deal img")).toHaveLength(4);
+    expect(screen.queryByText("Recent draws")).not.toBeInTheDocument();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
 test.each(["game", "gamehost"])(
   "the %s view shows the side card before the affected ace falls back",
   (route) => {

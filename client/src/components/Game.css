@@ -92,6 +92,7 @@
 }
 .betting-card {
   border: 1px solid var(--line);
+  position: relative;
   background:
     radial-gradient(
       ellipse at top,
@@ -161,6 +162,47 @@
 .betting-card .stepper button:active:not(:disabled) {
   background: var(--suit-accent);
   color: var(--forest);
+}
+.betting-card .betting-chip,
+.betting-card .betting-chip-stack {
+  position: absolute;
+  top: 52%;
+  left: 9px;
+  margin: 0;
+  width: 22px;
+  pointer-events: none;
+}
+.betting-card .betting-chip {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  border: 2px dashed var(--forest);
+  border-radius: 50%;
+  background: var(--suit-accent);
+  color: var(--forest);
+  font-size: 13px;
+  animation: wager-chip-flight 380ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+.betting-card .betting-chip-stack {
+  height: calc(6px + var(--stack-depth) * 2px);
+  border-radius: 6px;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--suit-accent) 0 2px,
+    #193930 2px 3px
+  );
+  box-shadow: 0 3px 6px #0007;
+}
+@keyframes wager-chip-flight {
+  from {
+    left: calc(100% - 38px);
+    top: calc(100% - 34px);
+    transform: scale(0.8) rotate(140deg);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.65) rotate(0);
+  }
 }
 @keyframes wager-count {
   45% {
@@ -372,6 +414,13 @@
   text-align: center;
   animation: player-ceremony-enter 0.5s ease-out both;
 }
+.player-ceremony.is-your-turn {
+  border-color: var(--gold-light);
+  box-shadow: 0 0 20px #d9bf863a;
+}
+.player-ceremony.is-your-turn .player-ceremony__spotlight > span {
+  color: var(--cream);
+}
 .player-ceremony__spotlight {
   padding: 42px 0 34px;
   animation: player-ceremony-enter 0.5s ease-out both;
@@ -464,5 +513,8 @@
   }
   .betting-card:hover {
     transform: none;
+  }
+  .betting-card .betting-chip {
+    display: none;
   }
 }

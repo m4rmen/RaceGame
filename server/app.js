@@ -187,6 +187,7 @@ function snapshot(game) {
     grid: game.grid,
     positions: game.positions,
     lastCard: game.lastCard,
+    recentDraws: game.recentDraws ?? (game.lastCard ? [game.lastCard] : []),
     ceremony: game.phase === "drinking" ? getDrinkingState(game) : null,
     postCeremony: game.phase === "postDrinking" ? getPostDrinkingState(game) : null,
     raceResult: game.gameWon ? getEndGameState(game) : null,
@@ -464,6 +465,10 @@ io.on("connection", (socket) => {
       )?.[4];
       // Cover clicks already in flight when a side card is revealed.
       if (sideCard) game.sideCardRevealUntil = Date.now() + 3000;
+      game.recentDraws = [
+        card,
+        ...(game.recentDraws ?? (game.lastCard ? [game.lastCard] : [])),
+      ].slice(0, 3);
       game.lastCard = card;
       if (game.gameWon) {
         game.phase = "finished";
@@ -476,6 +481,7 @@ io.on("connection", (socket) => {
       return {
         card,
         sideCard,
+        recentDraws: game.recentDraws,
         grid: game.grid,
         positions: game.positions,
         raceResult,
@@ -486,7 +492,7 @@ io.on("connection", (socket) => {
       callback({ success: false });
       return;
     }
-    io.to(roomId).emit("cardFlipped", result.card);
+    io.to(roomId).emit("cardFlipped", result.card, result.recentDraws);
     io.to(roomId).emit("updateGrid", result.grid, result.sideCard ?? null);
     if (result.raceResult) io.to(roomId).emit("gameWon", result.raceResult);
     if (result.nextEvent)

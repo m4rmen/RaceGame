@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
+import { AnimatedTally, ReplayDeal, ToastSources, TurnSpotlight } from "./RaceExtras";
 import { FullAllowanceCallout, wagerDetails, wagerTier } from "./DrinkingCeremony";
 import "./Game.css";
 
@@ -34,6 +35,8 @@ export default function Game() {
   const [postDrinkingDone, setPostDrinkingDone] = useState(false);
   const [distribution, setDistribution] = useState({});
   const [distributionError, setDistributionError] = useState("");
+  const [isReplay, setIsReplay] = useState(false);
+  const [chipLaunch, setChipLaunch] = useState(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -85,6 +88,7 @@ export default function Game() {
     };
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
+      setIsReplay(false);
       setCardGrid(grid);
       setCeremony(null);
       setPostCeremony(null);
@@ -96,6 +100,8 @@ export default function Game() {
       setDistribution({});
     };
     const onNewGame = ({ players: nextPlayers, grid }) => {
+      setIsReplay(true);
+      setChipLaunch(null);
       onPlayers(nextPlayers);
       setBetConfirmed(false);
       setIsGameStarted(false);
@@ -164,6 +170,9 @@ export default function Game() {
 
   const handleBet = (change, suit) => {
     if (!currentPlayer || betConfirmed) return;
+    if (change > 0) {
+      setChipLaunch((previous) => ({ suit, sequence: (previous?.sequence ?? 0) + 1 }));
+    }
     const bet = {
       ...currentPlayer.bet,
       [suit]: Math.max(0, (currentPlayer.bet[suit] || 0) + change),
@@ -202,8 +211,9 @@ export default function Game() {
   const myCeremonyEntry = ceremony?.players.find(
     (player) => player.socketId === playerId,
   );
-  const isMyTurn = ceremonyPlayer?.socketId === playerId;
+  const isMyTurn = Boolean(playerId && ceremonyPlayer?.socketId === playerId);
   const activePostPlayer = postCeremony?.players[postCeremony.currentIndex];
+  const isMyPostTurn = Boolean(playerId && activePostPlayer?.socketId === playerId);
   const myPostEntry = postCeremony?.players.find(
     (player) => player.socketId === playerId,
   );
@@ -239,22 +249,19 @@ export default function Game() {
       </div>
       {!revealedWinner && postCeremony ? (
         <section
-          className="player-ceremony player-ceremony--finale club-panel"
+          className={`player-ceremony player-ceremony--finale club-panel${isMyPostTurn ? " is-your-turn" : ""}`}
           aria-live="polite"
         >
+          {isMyPostTurn && <TurnSpotlight />}
           <span className="eyebrow">
             The winners' circle · Rider {postCeremony.currentIndex + 1} of{" "}
             {postCeremony.players.length}
           </span>
           <div className="player-ceremony__spotlight" key={activePostPlayer?.socketId}>
-            <span>
-              {activePostPlayer?.socketId === playerId
-                ? "Your final toast"
-                : "Now in the spotlight"}
-            </span>
+            <span>{isMyPostTurn ? "Your final toast" : "Now in the spotlight"}</span>
             <h2>{activePostPlayer?.username}</h2>
             <p>
-              {activePostPlayer?.socketId === playerId
+              {isMyPostTurn
                 ? "Take the drinks given to you, then tell the host you're ready."
                 : "The next name is coming up."}
             </p>
@@ -263,23 +270,20 @@ export default function Game() {
           <div className="player-ceremony__ticket">
             <span className="eyebrow">Your final tally</span>
             <strong>
-              {myPostEntry?.total || 0}{" "}
+              <AnimatedTally total={myPostEntry?.total || 0} active={isMyPostTurn} />{" "}
               <small>{myPostEntry?.total === 1 ? "sip" : "sips"}</small>
             </strong>
             <p>
-              {myPostEntry?.sources.length
-                ? myPostEntry.sources
-                    .map(({ username, amount }) => `${amount} from ${username}`)
-                    .join(" · ")
-                : "No drinks assigned"}
+              <ToastSources sources={myPostEntry?.sources} active={isMyPostTurn} />
             </p>
           </div>
         </section>
       ) : ceremony ? (
         <section
-          className={`player-ceremony club-panel player-ceremony--${wagerTier(myCeremonyEntry?.total || 0).key}`}
+          className={`player-ceremony club-panel player-ceremony--${wagerTier(myCeremonyEntry?.total || 0).key}${isMyTurn ? " is-your-turn" : ""}`}
           aria-live="polite"
         >
+          {isMyTurn && <TurnSpotlight />}
           <span className="eyebrow">
             Before the off · Rider {ceremony.currentIndex + 1} of{" "}
             {ceremony.players.length}
@@ -387,6 +391,10 @@ export default function Game() {
           <RaceTrack
             grid={cardGrid}
             lastCard={lastCard}
+            started={isGameStarted}
+            picks={suits
+              .filter(({ name }) => currentPlayer?.bet[name] > 0)
+              .map(({ name }) => name)}
             winner={revealedWinner}
             sideCard={sideCard}
             onSideCardEnd={finishSideCardReveal}
@@ -394,7 +402,8 @@ export default function Game() {
           />
         </>
       ) : (
-        <div className="player-page__betting">
+        <div className="player-page__betting replay-stage">
+          {isReplay && <ReplayDeal />}
           <div className="player-page__section-title">
             <span className="eyebrow">01 / The betting ring</span>
             <h2>Pick your contenders.</h2>
@@ -436,6 +445,22 @@ export default function Game() {
                       </button>
                     </div>
                   </div>
+                  {wager > 0 && (
+                    <span
+                      className="betting-chip-stack"
+                      style={{ "--stack-depth": Math.min(wager, 5) }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {chipLaunch?.suit === name && (
+                    <span
+                      className="betting-chip"
+                      key={chipLaunch.sequence}
+                      aria-hidden="true"
+                    >
+                      {symbol}
+                    </span>
+                  )}
                 </div>
               );
             })}

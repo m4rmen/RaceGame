@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
+import { ReplayDeal } from "./RaceExtras";
 import DrinkingCeremony from "./DrinkingCeremony";
 import "./GameHost.css";
 
@@ -24,6 +25,8 @@ export default function GameHost() {
   const [players, setPlayers] = useState([]);
   const [isGameStarted, setIsGameStarted] = useState(false);
   const [lastCard, setLastCard] = useState(null);
+  const [recentDraws, setRecentDraws] = useState([]);
+  const [isReplay, setIsReplay] = useState(false);
   const [cardGrid, setCardGrid] = useState(initialGrid);
   const [raceResult, setRaceResult] = useState(null);
   const [revealedWinner, setRevealedWinner] = useState(null);
@@ -51,6 +54,7 @@ export default function GameHost() {
           ["racing", "finished", "postDrinking", "complete"].includes(state.phase),
         );
         setLastCard(state.lastCard);
+        setRecentDraws(state.recentDraws ?? (state.lastCard ? [state.lastCard] : []));
         setCardGrid(state.grid);
         setSideCard(null);
         setRaceResult(state.raceResult);
@@ -64,6 +68,7 @@ export default function GameHost() {
     if (socket.connected) resume();
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
+      setIsReplay(false);
       setCardGrid(grid);
       setCeremony(null);
       setConfirmingDrink(false);
@@ -87,6 +92,8 @@ export default function GameHost() {
       setPlayers(nextPlayers);
       setIsGameStarted(false);
       setLastCard(null);
+      setRecentDraws([]);
+      setIsReplay(true);
       setSideCard(null);
       setCardGrid(grid);
       setRaceResult(null);
@@ -101,7 +108,11 @@ export default function GameHost() {
     socket.on("drinkingCeremony", onCeremony);
     socket.on("postDrinkingCeremony", onPostCeremony);
     socket.on("postDrinkingComplete", onPostComplete);
-    socket.on("cardFlipped", setLastCard);
+    const onDraw = (card, history) => {
+      setLastCard(card);
+      setRecentDraws((previous) => history ?? [card, ...previous].slice(0, 3));
+    };
+    socket.on("cardFlipped", onDraw);
     const onGrid = (grid, revealedSideCard = null) => {
       setCardGrid(grid);
       setSideCard(revealedSideCard);
@@ -123,7 +134,7 @@ export default function GameHost() {
       socket.off("drinkingCeremony", onCeremony);
       socket.off("postDrinkingCeremony", onPostCeremony);
       socket.off("postDrinkingComplete", onPostComplete);
-      socket.off("cardFlipped", setLastCard);
+      socket.off("cardFlipped", onDraw);
       socket.off("updateGrid", onGrid);
       socket.off("gameWon", onWon);
       socket.off("distributionUpdate", setRaceResult);
@@ -359,10 +370,13 @@ export default function GameHost() {
               </div>
             </aside>
           </div>
-          <div className="host-page__main">
+          <div className="host-page__main replay-stage">
+            {isReplay && <ReplayDeal />}
             <RaceTrack
               grid={cardGrid}
               lastCard={lastCard}
+              recentDraws={recentDraws}
+              started={isGameStarted}
               winner={revealedWinner}
               sideCard={sideCard}
               onSideCardEnd={finishSideCardReveal}

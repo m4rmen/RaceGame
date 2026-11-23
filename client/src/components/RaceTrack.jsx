@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import WinnerReveal from "./WinnerReveal";
+import { DrawFan, RaceCall } from "./RaceExtras";
 import "./RaceTrack.css";
 
 const horses = ["clubs", "diamonds", "hearts", "spades"];
@@ -58,6 +59,9 @@ function SideCardSpotlight({ card, sourceCards, sourceIndex }) {
 export default function RaceTrack({
   grid = [],
   lastCard,
+  recentDraws,
+  started = false,
+  picks = [],
   winner,
   sideCard,
   onSideCardEnd,
@@ -74,6 +78,23 @@ export default function RaceTrack({
     .slice(1)
     .reverse()
     .map((row) => row[4] || "back_of_card");
+  const field = horses.map((suit, column) => {
+    const row = grid.findIndex((cells) => cells[column] === `${suit}_ace`);
+    return { suit, progress: row < 0 ? 0 : totalSteps - row };
+  });
+  const lead = Math.max(...field.map(({ progress }) => progress));
+  const leaders = lead
+    ? field.filter(({ progress }) => progress === lead).map(({ suit }) => suit)
+    : [];
+  const photoFinish = Boolean(
+    winner &&
+    lead === totalSteps &&
+    totalSteps > 1 &&
+    field.some(
+      ({ suit, progress }) => `${suit}_ace` !== winner && progress === totalSteps - 1,
+    ),
+  );
+  const showGates = started && !lastCard;
 
   useEffect(() => {
     if (!sideCard) {
@@ -103,34 +124,47 @@ export default function RaceTrack({
           <h2>And they’re off.</h2>
           <p>Every drawn suit advances its horse one length.</p>
         </div>
-        {lastCard && (
-          <div className="race-track__draw">
-            <span>Last draw</span>
-            <img
-              key={lastCard}
-              src={`/Images/${lastCard}.png`}
-              alt={lastCard.replace("_", " of ")}
-            />
-          </div>
+        {lastCard && recentDraws?.length ? (
+          <DrawFan cards={recentDraws} />
+        ) : (
+          lastCard && (
+            <div className="race-track__draw">
+              <span>Last draw</span>
+              <img
+                key={lastCard}
+                src={`/Images/${lastCard}.png`}
+                alt={lastCard.replace("_", " of ")}
+              />
+            </div>
+          )
         )}
       </div>
+      {started && recentDraws && (
+        <RaceCall
+          leaders={leaders}
+          nearFinish={lead === totalSteps - 1}
+          winner={winner}
+          paused={showSideCard}
+        />
+      )}
       <div className="race-track__course">
         <div className="race-track__scale">
           <span>START</span>
           <span>THE COURSE</span>
           <span>FINISH</span>
         </div>
-        {horses.map((suit, column) => {
-          const row = grid.findIndex((cells) => cells[column] === `${suit}_ace`);
+        {field.map(({ suit, progress: settledProgress }) => {
           const setback = setbackSuit === suit;
-          const progress =
-            row < 0 ? 0 : totalSteps - row + (showSideCard && setback ? 1 : 0);
+          const progress = settledProgress + (showSideCard && setback ? 1 : 0);
           const fraction = progress / totalSteps;
           return (
             <div className={`race-lane race-lane--${suit}`} key={suit}>
               <div className="race-lane__name">
                 <span className="race-lane__symbol">{symbols[suit]}</span>
                 <span>{suit}</span>
+                {picks.includes(suit) && (
+                  <small className="race-lane__pick">Your pick</small>
+                )}
               </div>
               <div className="race-lane__rail" style={{ "--race-progress": fraction }}>
                 {drawnSuit === suit && (
@@ -160,6 +194,12 @@ export default function RaceTrack({
                     </span>
                   )}
                 </div>
+                {showGates && (
+                  <div className="starting-gate" aria-hidden="true">
+                    <i />
+                    <i />
+                  </div>
+                )}
               </div>
               <span className="race-lane__distance">
                 {progress}/{totalSteps}
@@ -227,7 +267,12 @@ export default function RaceTrack({
         />
       )}
       {winner && !sideCard && (
-        <WinnerReveal key={winner} winner={winner} onComplete={onWinnerRevealEnd} />
+        <WinnerReveal
+          key={winner}
+          winner={winner}
+          photoFinish={photoFinish}
+          onComplete={onWinnerRevealEnd}
+        />
       )}
     </section>
   );

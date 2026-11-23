@@ -109,11 +109,15 @@ test("a host and player can resume a shared room after reconnecting", async () =
     const gridUpdate = new Promise((resolve) =>
       resumedPlayer.once("updateGrid", (grid, sideCard) => resolve({ grid, sideCard })),
     );
+    const recentDraws = new Promise((resolve) =>
+      resumedPlayer.once("cardFlipped", (_card, history) => resolve(history)),
+    );
     assert.deepEqual(await resumedHost.timeout(2000).emitWithAck("flipCard", roomId), {
       success: true,
     });
     const { grid, sideCard } = await gridUpdate;
     assert.equal(sideCard, "clubs_3");
+    assert.deepEqual(await recentDraws, ["clubs_2"]);
     assert.equal(grid[7][0], "clubs_ace");
     await gameStore.update(roomId, (game) => {
       game.deck = ["hearts_3"];
@@ -165,6 +169,7 @@ test("a host and player can resume a shared room after reconnecting", async () =
     });
     const replay = await resumedPlayer.timeout(2000).emitWithAck("resumeRoom", roomId);
     assert.equal(replay.state.phase, "betting");
+    assert.deepEqual(replay.state.recentDraws, []);
     assert.equal(replay.state.players[0].bet.clubs, 0);
     assert.deepEqual(
       await resumedHost.timeout(2000).emitWithAck("removePlayer", roomId, playerId),
