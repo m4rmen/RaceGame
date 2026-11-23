@@ -47,3 +47,35 @@
   font-size: 13px;
   text-underline-offset: 3px;
 }
+
+.host-layout .staging-roster__list > div {
+  animation: paddock-arrival 320ms ease-out both;
+}
+.host-layout .staging-roster__list strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.host-layout .staging-roster__list i {
+  padding: 4px 6px;
+  border: 1px solid var(--gold);
+  color: var(--gold-light);
+  animation: paddock-stamp 240ms 140ms ease-out both;
+}
+@keyframes paddock-arrival {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+@keyframes paddock-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.25) rotate(-8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .host-layout .staging-roster__list > div,
+  .host-layout .staging-roster__list i {
+    animation: none;
+  }
+}

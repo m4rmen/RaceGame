@@ -101,6 +101,34 @@ test("a host and player can resume a shared room after reconnecting", async () =
     assert.equal(raceState.state.phase, "racing");
 
     await gameStore.update(roomId, (game) => {
+      game.crampCards[6] = "clubs_3";
+      game.deck = ["clubs_2"];
+      for (const suit of ["diamonds", "hearts", "spades"]) game.moveAce(`${suit}_2`);
+      return { changed: true };
+    });
+    const gridUpdate = new Promise((resolve) =>
+      resumedPlayer.once("updateGrid", (grid, sideCard) => resolve({ grid, sideCard })),
+    );
+    const recentDraws = new Promise((resolve) =>
+      resumedPlayer.once("cardFlipped", (_card, history) => resolve(history)),
+    );
+    assert.deepEqual(await resumedHost.timeout(2000).emitWithAck("flipCard", roomId), {
+      success: true,
+    });
+    const { grid, sideCard } = await gridUpdate;
+    assert.equal(sideCard, "clubs_3");
+    assert.deepEqual(await recentDraws, ["clubs_2"]);
+    assert.equal(grid[7][0], "clubs_ace");
+    await gameStore.update(roomId, (game) => {
+      game.deck = ["hearts_3"];
+      return { changed: true };
+    });
+    assert.deepEqual(await resumedHost.timeout(2000).emitWithAck("flipCard", roomId), {
+      success: false,
+    });
+    assert.deepEqual((await gameStore.get(roomId)).deck, ["hearts_3"]);
+
+    await gameStore.update(roomId, (game) => {
       game.phase = "finished";
       game.gameWon = true;
       game.winner = "clubs_ace";
@@ -141,6 +169,7 @@ test("a host and player can resume a shared room after reconnecting", async () =
     });
     const replay = await resumedPlayer.timeout(2000).emitWithAck("resumeRoom", roomId);
     assert.equal(replay.state.phase, "betting");
+    assert.deepEqual(replay.state.recentDraws, []);
     assert.equal(replay.state.players[0].bet.clubs, 0);
     assert.deepEqual(
       await resumedHost.timeout(2000).emitWithAck("removePlayer", roomId, playerId),

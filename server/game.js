@@ -64,6 +64,7 @@ class Game {
   gameWon = false;
   winner = null;
   lastCard = null;
+  recentDraws = [];
   sockets = {};
   positions = {
     clubs_ace: positions.Fourth,

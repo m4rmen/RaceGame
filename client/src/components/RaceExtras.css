@@ -1,0 +1,270 @@
+.race-call {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 13px;
+  border-inline-start: 3px solid var(--gold-light);
+  background: linear-gradient(90deg, #d9bf8625, #d9bf8608);
+  color: var(--cream);
+  font-size: 13px;
+}
+.race-call span {
+  animation: race-call-enter 250ms ease-out both;
+}
+@keyframes race-call-enter {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+.race-track__draw.draw-fan {
+  --fan-step: 19px;
+  width: 112px;
+}
+.draw-fan__cards {
+  position: relative;
+  height: 92px;
+}
+.race-track__draw.draw-fan img {
+  position: absolute;
+  top: 0;
+  left: calc(6px + var(--fan-index) * var(--fan-step));
+  transform: rotate(calc(-12deg + var(--fan-index) * 10deg));
+  animation: none;
+}
+.race-track__draw.draw-fan img:last-child {
+  animation: fan-deal 320ms ease-out both;
+}
+@keyframes fan-deal {
+  from {
+    opacity: 0;
+    translate: 8px -11px;
+    scale: 0.9;
+  }
+}
+
+.race-lane .race-lane__name {
+  position: relative;
+}
+.race-lane__pick {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  padding: 2px 5px;
+  border: 1px solid var(--suit-accent);
+  border-radius: 10px;
+  color: var(--suit-accent);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.starting-gate {
+  position: absolute;
+  z-index: 2;
+  inset: 50% auto auto 0;
+  display: flex;
+  width: calc(var(--runner-width) + 8px);
+  height: calc(var(--runner-height) + 6px);
+  transform: translate(-50%, -50%);
+  perspective: 400px;
+  pointer-events: none;
+  animation: gates-clear 620ms ease-out both;
+}
+.starting-gate i {
+  width: 50%;
+  border: 2px solid #d3b674;
+  border-radius: 3px;
+  background: repeating-linear-gradient(90deg, #132e24 0 4px, #dcbd75 4px 6px);
+  transform-origin: left;
+  animation: gate-swing 500ms 100ms ease-out both;
+}
+.starting-gate i:last-child {
+  transform-origin: right;
+  animation-name: gate-swing-right;
+}
+@keyframes gate-swing {
+  to {
+    transform: rotateY(-105deg);
+  }
+}
+@keyframes gate-swing-right {
+  to {
+    transform: rotateY(105deg);
+  }
+}
+@keyframes gates-clear {
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.replay-stage {
+  position: relative;
+}
+.replay-deal {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    #102c25f2 0 35%,
+    #0b241dd9 74%,
+    transparent
+  );
+  animation: replay-veil 1250ms ease both;
+}
+.replay-deal img {
+  grid-area: 1 / 1;
+  width: clamp(56px, 14vw, 108px);
+  aspect-ratio: 2 / 3;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px #000a);
+  animation: replay-card 1020ms cubic-bezier(0.2, 0.8, 0.2, 1)
+    calc(var(--deal-index) * 40ms) both;
+}
+@keyframes replay-veil {
+  0%,
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+  8%,
+  80% {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+@keyframes replay-card {
+  0%,
+  100% {
+    transform: translateX(calc(var(--deal-offset) * 93%))
+      rotate(calc(var(--deal-offset) * 8deg));
+  }
+  25%,
+  60% {
+    transform: translateX(calc(var(--deal-offset) * 4px));
+  }
+  44% {
+    transform: translateX(calc(var(--deal-offset) * -27%))
+      rotate(calc(var(--deal-offset) * -17deg));
+  }
+}
+
+.tally-accessible {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.toast-source.is-revealing {
+  display: inline-block;
+  animation: toast-source-enter 230ms var(--source-delay) ease-out both;
+}
+@keyframes toast-source-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+.turn-spotlight {
+  position: fixed;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 54px #ffda8a9c;
+  animation: turn-spotlight 800ms ease-out both;
+}
+@keyframes turn-spotlight {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  28% {
+    opacity: 1;
+  }
+}
+
+.photo-finish {
+  position: absolute;
+  z-index: 2;
+  inset: 8px;
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  padding: 16px;
+  border: 3px solid var(--cream);
+  box-shadow: inset 0 0 50px #000;
+  pointer-events: none;
+  backdrop-filter: grayscale(1);
+  opacity: 0;
+  animation: photo-finish-frame 750ms 620ms ease-out both;
+}
+.photo-finish span {
+  padding: 7px 12px;
+  background: var(--cream);
+  color: var(--forest);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+@keyframes photo-finish-frame {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+    background-color: #f5efdf40;
+  }
+  75% {
+    opacity: 1;
+    background-color: transparent;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .race-track__draw.draw-fan {
+    --fan-step: 12px;
+    width: 79px;
+  }
+  .draw-fan__cards {
+    height: 70px;
+  }
+  .race-lane .race-lane__pick {
+    left: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .race-call span,
+  .race-track__draw.draw-fan img:last-child,
+  .toast-source.is-revealing {
+    animation: none;
+  }
+  .starting-gate,
+  .replay-deal,
+  .turn-spotlight {
+    display: none;
+  }
+  .photo-finish {
+    z-index: 3;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    opacity: 1;
+    animation: none;
+  }
+}

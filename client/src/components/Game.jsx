@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSocket } from "../SocketContext";
 import ClubHeader from "./ClubHeader";
 import RaceTrack from "./RaceTrack";
+import { AnimatedTally, ReplayDeal, ToastSources, TurnSpotlight } from "./RaceExtras";
 import { FullAllowanceCallout, wagerDetails, wagerTier } from "./DrinkingCeremony";
 import "./Game.css";
 
@@ -26,12 +27,16 @@ export default function Game() {
   const [lastCard, setLastCard] = useState(null);
   const [raceResult, setRaceResult] = useState(null);
   const [revealedWinner, setRevealedWinner] = useState(null);
+  const [sideCard, setSideCard] = useState(null);
+  const finishSideCardReveal = useCallback(() => setSideCard(null), []);
   const finishWinnerReveal = useCallback(() => setRevealedWinner(null), []);
   const [ceremony, setCeremony] = useState(null);
   const [postCeremony, setPostCeremony] = useState(null);
   const [postDrinkingDone, setPostDrinkingDone] = useState(false);
   const [distribution, setDistribution] = useState({});
   const [distributionError, setDistributionError] = useState("");
+  const [isReplay, setIsReplay] = useState(false);
+  const [chipLaunch, setChipLaunch] = useState(null);
 
   useEffect(() => {
     if (!socket) return;
@@ -47,6 +52,7 @@ export default function Game() {
         ["racing", "finished", "postDrinking", "complete"].includes(state.phase),
       );
       setCardGrid(state.grid);
+      setSideCard(null);
       setLastCard(state.lastCard);
       setCeremony(state.ceremony);
       setPostCeremony(state.postCeremony);
@@ -82,6 +88,7 @@ export default function Game() {
     };
     const onStart = ({ grid }) => {
       setIsGameStarted(true);
+      setIsReplay(false);
       setCardGrid(grid);
       setCeremony(null);
       setPostCeremony(null);
@@ -93,11 +100,14 @@ export default function Game() {
       setDistribution({});
     };
     const onNewGame = ({ players: nextPlayers, grid }) => {
+      setIsReplay(true);
+      setChipLaunch(null);
       onPlayers(nextPlayers);
       setBetConfirmed(false);
       setIsGameStarted(false);
       setCardGrid(grid);
       setLastCard(null);
+      setSideCard(null);
       setRaceResult(null);
       setRevealedWinner(null);
       setCeremony(null);
@@ -116,7 +126,11 @@ export default function Game() {
     };
     socket.on("postDrinkingComplete", onPostComplete);
     socket.on("cardFlipped", setLastCard);
-    socket.on("updateGrid", setCardGrid);
+    const onGrid = (grid, revealedSideCard = null) => {
+      setCardGrid(grid);
+      setSideCard(revealedSideCard);
+    };
+    socket.on("updateGrid", onGrid);
     socket.on("gameWon", onWon);
     socket.on("distributionUpdate", setRaceResult);
     socket.on("newGame", onNewGame);
@@ -145,7 +159,7 @@ export default function Game() {
       socket.off("postDrinkingCeremony", setPostCeremony);
       socket.off("postDrinkingComplete", onPostComplete);
       socket.off("cardFlipped", setLastCard);
-      socket.off("updateGrid", setCardGrid);
+      socket.off("updateGrid", onGrid);
       socket.off("gameWon", onWon);
       socket.off("distributionUpdate", setRaceResult);
       socket.off("newGame", onNewGame);
@@ -156,6 +170,9 @@ export default function Game() {
 
   const handleBet = (change, suit) => {
     if (!currentPlayer || betConfirmed) return;
+    if (change > 0) {
+      setChipLaunch((previous) => ({ suit, sequence: (previous?.sequence ?? 0) + 1 }));
+    }
     const bet = {
       ...currentPlayer.bet,
       [suit]: Math.max(0, (currentPlayer.bet[suit] || 0) + change),
@@ -194,8 +211,9 @@ export default function Game() {
   const myCeremonyEntry = ceremony?.players.find(
     (player) => player.socketId === playerId,
   );
-  const isMyTurn = ceremonyPlayer?.socketId === playerId;
+  const isMyTurn = Boolean(playerId && ceremonyPlayer?.socketId === playerId);
   const activePostPlayer = postCeremony?.players[postCeremony.currentIndex];
+  const isMyPostTurn = Boolean(playerId && activePostPlayer?.socketId === playerId);
   const myPostEntry = postCeremony?.players.find(
     (player) => player.socketId === playerId,
   );
@@ -231,22 +249,19 @@ export default function Game() {
       </div>
       {!revealedWinner && postCeremony ? (
         <section
-          className="player-ceremony player-ceremony--finale club-panel"
+          className={`player-ceremony player-ceremony--finale club-panel${isMyPostTurn ? " is-your-turn" : ""}`}
           aria-live="polite"
         >
+          {isMyPostTurn && <TurnSpotlight />}
           <span className="eyebrow">
             The winners' circle · Rider {postCeremony.currentIndex + 1} of{" "}
             {postCeremony.players.length}
           </span>
           <div className="player-ceremony__spotlight" key={activePostPlayer?.socketId}>
-            <span>
-              {activePostPlayer?.socketId === playerId
-                ? "Your final toast"
-                : "Now in the spotlight"}
-            </span>
+            <span>{isMyPostTurn ? "Your final toast" : "Now in the spotlight"}</span>
             <h2>{activePostPlayer?.username}</h2>
             <p>
-              {activePostPlayer?.socketId === playerId
+              {isMyPostTurn
                 ? "Take the drinks given to you, then tell the host you're ready."
                 : "The next name is coming up."}
             </p>
@@ -255,23 +270,20 @@ export default function Game() {
           <div className="player-ceremony__ticket">
             <span className="eyebrow">Your final tally</span>
             <strong>
-              {myPostEntry?.total || 0}{" "}
+              <AnimatedTally total={myPostEntry?.total || 0} active={isMyPostTurn} />{" "}
               <small>{myPostEntry?.total === 1 ? "sip" : "sips"}</small>
             </strong>
             <p>
-              {myPostEntry?.sources.length
-                ? myPostEntry.sources
-                    .map(({ username, amount }) => `${amount} from ${username}`)
-                    .join(" · ")
-                : "No drinks assigned"}
+              <ToastSources sources={myPostEntry?.sources} active={isMyPostTurn} />
             </p>
           </div>
         </section>
       ) : ceremony ? (
         <section
-          className={`player-ceremony club-panel player-ceremony--${wagerTier(myCeremonyEntry?.total || 0).key}`}
+          className={`player-ceremony club-panel player-ceremony--${wagerTier(myCeremonyEntry?.total || 0).key}${isMyTurn ? " is-your-turn" : ""}`}
           aria-live="polite"
         >
+          {isMyTurn && <TurnSpotlight />}
           <span className="eyebrow">
             Before the off · Rider {ceremony.currentIndex + 1} of{" "}
             {ceremony.players.length}
@@ -379,48 +391,79 @@ export default function Game() {
           <RaceTrack
             grid={cardGrid}
             lastCard={lastCard}
+            started={isGameStarted}
+            picks={suits
+              .filter(({ name }) => currentPlayer?.bet[name] > 0)
+              .map(({ name }) => name)}
             winner={revealedWinner}
+            sideCard={sideCard}
+            onSideCardEnd={finishSideCardReveal}
             onWinnerRevealEnd={finishWinnerReveal}
           />
         </>
       ) : (
-        <div className="player-page__betting">
+        <div className="player-page__betting replay-stage">
+          {isReplay && <ReplayDeal />}
           <div className="player-page__section-title">
             <span className="eyebrow">01 / The betting ring</span>
             <h2>Pick your contenders.</h2>
           </div>
           <div className="betting-card-container">
-            {suits.map(({ name, symbol }, index) => (
-              <div className={`betting-card betting-card--${name}`} key={name}>
-                <span className="betting-card__number">
-                  NO. {String(index + 1).padStart(2, "0")}
-                </span>
-                <img src={`/Images/${name}_ace.png`} alt={`${name} ace`} />
-                <div className="betting-card__bottom">
-                  <span>
-                    <i>{symbol}</i>
-                    {name}
+            {suits.map(({ name, symbol }, index) => {
+              const wager = currentPlayer?.bet[name] || 0;
+              return (
+                <div
+                  className={`betting-card betting-card--${name}${wager ? " has-wager" : ""}`}
+                  key={name}
+                >
+                  <span className="betting-card__number">
+                    NO. {String(index + 1).padStart(2, "0")}
                   </span>
-                  <div className="stepper">
-                    <button
-                      aria-label={`Decrease ${name} bet`}
-                      disabled={betConfirmed || !currentPlayer?.bet[name]}
-                      onClick={() => handleBet(-1, name)}
-                    >
-                      −
-                    </button>
-                    <strong>{currentPlayer?.bet[name] || 0}</strong>
-                    <button
-                      aria-label={`Increase ${name} bet`}
-                      disabled={betConfirmed || !currentPlayer}
-                      onClick={() => handleBet(1, name)}
-                    >
-                      +
-                    </button>
+                  <img src={`/Images/${name}_ace.png`} alt={`${name} ace`} />
+                  <div className="betting-card__bottom">
+                    <span>
+                      <i>{symbol}</i>
+                      {name}
+                    </span>
+                    <div className="stepper">
+                      <button
+                        aria-label={`Decrease ${name} bet`}
+                        disabled={betConfirmed || !wager}
+                        onClick={() => handleBet(-1, name)}
+                      >
+                        −
+                      </button>
+                      <strong key={wager} className="betting-card__count">
+                        {wager}
+                      </strong>
+                      <button
+                        aria-label={`Increase ${name} bet`}
+                        disabled={betConfirmed || !currentPlayer}
+                        onClick={() => handleBet(1, name)}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
+                  {wager > 0 && (
+                    <span
+                      className="betting-chip-stack"
+                      style={{ "--stack-depth": Math.min(wager, 5) }}
+                      aria-hidden="true"
+                    />
+                  )}
+                  {chipLaunch?.suit === name && (
+                    <span
+                      className="betting-chip"
+                      key={chipLaunch.sequence}
+                      aria-hidden="true"
+                    >
+                      {symbol}
+                    </span>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="betting-footer club-panel">
             <div>

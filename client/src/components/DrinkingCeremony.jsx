@@ -1,4 +1,5 @@
 import React from "react";
+import { AnimatedTally, ToastSources } from "./RaceExtras";
 import "./DrinkingCeremony.css";
 
 const suitSymbols = { clubs: "♣", spades: "♠", hearts: "♥", diamonds: "♦" };
@@ -98,7 +99,9 @@ export default function DrinkingCeremony({
               : tier.title}
           </p>
           <div className="ceremony-stage__amount">
-            <strong>{active.total}</strong>
+            <strong>
+              {finale ? <AnimatedTally total={active.total} /> : active.total}
+            </strong>
             <span>
               {active.total === 1 ? "SIP" : "SIPS"}
               <small>
@@ -111,7 +114,11 @@ export default function DrinkingCeremony({
             </span>
           </div>
           <p className="ceremony-stage__bet">
-            {finale ? sourceDetails(active.sources) : wagerDetails(active.bet)}
+            {finale ? (
+              <ToastSources sources={active.sources} />
+            ) : (
+              wagerDetails(active.bet)
+            )}
           </p>
           {finale && <FullAllowanceCallout recipient={active} />}
           <div className="ceremony-stage__tokens" aria-hidden="true">
